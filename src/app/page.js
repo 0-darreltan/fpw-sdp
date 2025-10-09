@@ -1,11 +1,11 @@
-import AppNavbar from "../components/Navbar";
-import Hero from "../components/Hero";
-import About from "../components/About";
-import Services from "../components/Services";
-import OrderSection from "../components/OrderSection";
-import Certification from "../components/Certification";
-import Contact from "../components/Contact";
-import AppFooter from "../components/Footer";
+import AppNavbar from "../components/Navbar.jsx";
+import Hero from "../components/Hero.jsx";
+import About from "../components/About.jsx";
+import Services from "../components/Services.jsx";
+import OrderSection from "../components/OrderSection.jsx";
+import Certification from "../components/Certification.jsx";
+import Contact from "../components/Contact.jsx";
+import AppFooter from "../components/Footer.jsx";
 
 export default function Home() {
   return (

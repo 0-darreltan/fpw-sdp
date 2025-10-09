@@ -1,5 +1,5 @@
-// components/Hero.js
-import { Button } from "flowbite-react";
+// components/Hero.jsx
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -30,7 +30,10 @@ export default function Hero() {
             beton readymix dan precast terbaik di Sulawesi Tenggara
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <Button as="a" href="#services" color="failure" size="lg">
+            <Link
+              href="/services"
+              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-center text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition-colors"
+            >
               Lihat Produk
               <svg
                 className="w-5 h-5 ml-2 -mr-1"
@@ -44,10 +47,13 @@ export default function Hero() {
                   clipRule="evenodd"
                 ></path>
               </svg>
-            </Button>
-            <Button as="a" href="#contact" color="light" size="lg">
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-center text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 transition-colors"
+            >
               Hubungi Kami
-            </Button>
+            </Link>
           </div>
         </div>
       </div>
