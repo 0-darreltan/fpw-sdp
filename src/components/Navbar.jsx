@@ -102,6 +102,18 @@ export default function AppNavbar() {
             </li>
             <li>
               <Link
+                href="/project"
+                className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-red-600 md:p-0 ${
+                  isActive("/project")
+                    ? "text-red-600 bg-blue-700 md:bg-transparent md:text-red-600"
+                    : "text-gray-900"
+                }`}
+              >
+                Proyek
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/contact"
                 className={`block py-2 px-3 rounded hover:bg-gray-100 md:hover:bg-transparent md:border-0 md:hover:text-red-600 md:p-0 ${
                   isActive("/contact")

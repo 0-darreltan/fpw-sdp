@@ -49,6 +49,12 @@ export default function Hero() {
               </svg>
             </Link>
             <Link
+              href="/project"
+              className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-center text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 transition-colors"
+            >
+              Request Proyek
+            </Link>
+            <Link
               href="/contact"
               className="inline-flex items-center justify-center px-8 py-3 text-base font-medium text-center text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100 transition-colors"
             >
