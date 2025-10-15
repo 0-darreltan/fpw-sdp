@@ -2,43 +2,54 @@ import React, { useState } from 'react';
 import UserManagement from '../components/UserManagement';
 import ProductManagement from '../components/ProductManagement';
 import OrderManagement from '../components/OrderManagement';
-import ProjectMonitoring from '../components/ProjectMonitoring';
-import './AdminDashboard.css';
+import ProjectMonitoring from "../components/ProjectMonitoring";
 
-const AdminDashboard = ({ 
-  user, 
-  data, 
-  onAddUser, 
-  onUpdateUser, 
-  onDeleteUser, 
-  onAddProduct, 
-  onUpdateProduct, 
-  onDeleteProduct, 
+const AdminDashboard = ({
+  user,
+  data,
+  onAddUser,
+  onUpdateUser,
+  onDeleteUser,
+  onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct,
   onUpdateOrder,
   onAddProject,
-  onUpdateProject 
+  onUpdateProject,
 }) => {
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState("orders");
 
   const tabs = [
-    { id: 'orders', label: 'Kelola Pesanan', icon: '📋', count: data.orders.length },
-    { id: 'projects', label: 'Monitor Proyek', icon: '🏗️', count: data.projects.length },
-    { id: 'users', label: 'Kelola User', icon: '👥', count: data.users.length },
-    { id: 'products', label: 'Kelola Produk', icon: '📦', count: data.products.length }
+    {
+      id: "orders",
+      label: "Kelola Pesanan",
+      icon: "📋",
+      count: data.orders.length,
+    },
+    {
+      id: "projects",
+      label: "Monitor Proyek",
+      icon: "🏗️",
+      count: data.projects.length,
+    },
+    { id: "users", label: "Kelola User", icon: "👥", count: data.users.length },
+    {
+      id: "products",
+      label: "Kelola Produk",
+      icon: "📦",
+      count: data.products.length,
+    },
   ];
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case 'orders':
+      case "orders":
         return (
-          <OrderManagement 
-            orders={data.orders} 
-            onUpdateOrder={onUpdateOrder}
-          />
+          <OrderManagement orders={data.orders} onUpdateOrder={onUpdateOrder} />
         );
-      case 'projects':
+      case "projects":
         return (
-          <ProjectMonitoring 
+          <ProjectMonitoring
             projects={data.projects}
             orders={data.orders}
             users={data.users}
@@ -46,18 +57,18 @@ const AdminDashboard = ({
             onUpdateProject={onUpdateProject}
           />
         );
-      case 'users':
+      case "users":
         return (
-          <UserManagement 
+          <UserManagement
             users={data.users}
             onAddUser={onAddUser}
             onUpdateUser={onUpdateUser}
             onDeleteUser={onDeleteUser}
           />
         );
-      case 'products':
+      case "products":
         return (
-          <ProductManagement 
+          <ProductManagement
             products={data.products}
             onAddProduct={onAddProduct}
             onUpdateProduct={onUpdateProduct}
@@ -66,76 +77,105 @@ const AdminDashboard = ({
         );
       default:
         return (
-          <OrderManagement 
-            orders={data.orders} 
-            onUpdateOrder={onUpdateOrder}
-          />
+          <OrderManagement orders={data.orders} onUpdateOrder={onUpdateOrder} />
         );
     }
   };
 
   const getTabLabel = (tab) => {
     return (
-      <div className="tab-content">
-        <span className="tab-icon">{tab.icon}</span>
-        <span className="tab-text">{tab.label}</span>
-        {tab.count > 0 && <span className="tab-count">{tab.count}</span>}
+      <div className="flex items-center gap-2">
+        <span className="text-lg">{tab.icon}</span>
+        <span className="hidden sm:inline">{tab.label}</span>
+        {tab.count > 0 && (
+          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+            {tab.count}
+          </span>
+        )}
       </div>
     );
   };
 
   return (
-    <div className="admin-dashboard">
-      <div className="dashboard-header">
-        <h2>Dashboard Administrator</h2>
-        <p>Selamat datang, {user?.name}! Panel kontrol sistem manajemen proyek</p>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Dashboard Administrator
+          </h2>
+          <p className="text-gray-600 text-sm sm:text-base">
+            Selamat datang, {user?.name}! Panel kontrol sistem manajemen proyek
+          </p>
+        </div>
 
-      <div className="dashboard-stats">
-        <div className="stat-card">
-          <div className="stat-icon">📋</div>
-          <div className="stat-info">
-            <h3>{data.orders.length}</h3>
-            <p>Total Pesanan</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+            <div className="flex items-center">
+              <div className="text-3xl mr-4">📋</div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {data.orders.length}
+                </h3>
+                <p className="text-gray-600 text-sm">Total Pesanan</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+            <div className="flex items-center">
+              <div className="text-3xl mr-4">👥</div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {data.users.length}
+                </h3>
+                <p className="text-gray-600 text-sm">Total User</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+            <div className="flex items-center">
+              <div className="text-3xl mr-4">📦</div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {data.products.length}
+                </h3>
+                <p className="text-gray-600 text-sm">Total Produk</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
+            <div className="flex items-center">
+              <div className="text-3xl mr-4">🏗️</div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {data.projects.length}
+                </h3>
+                <p className="text-gray-600 text-sm">Proyek Aktif</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">👥</div>
-          <div className="stat-info">
-            <h3>{data.users.length}</h3>
-            <p>Total User</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📦</div>
-          <div className="stat-info">
-            <h3>{data.products.length}</h3>
-            <p>Total Produk</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🏗️</div>
-          <div className="stat-info">
-            <h3>{data.projects.length}</h3>
-            <p>Proyek Aktif</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="dashboard-tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {getTabLabel(tab)}
-          </button>
-        ))}
-      </div>
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 mb-6">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <nav className="flex">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`flex-1 min-w-0 px-4 py-4 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600 bg-blue-50"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {getTabLabel(tab)}
+                </button>
+              ))}
+            </nav>
+          </div>
 
-      <div className="dashboard-content">
-        {renderActiveTab()}
+          <div className="p-6">{renderActiveTab()}</div>
+        </div>
       </div>
     </div>
   );

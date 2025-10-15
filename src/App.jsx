@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import Homepage from "./components/Homepage";
 import Login from './components/Login';
 import Header from './components/Header';
 import CustomerDashboard from './pages/CustomerDashboard';
 import ProjectManagerDashboard from './pages/ProjectManagerDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import './App.css';
+import AdminDashboard from "./pages/AdminDashboard";
 
 // Mock data
 const initialData = {
@@ -90,15 +90,17 @@ const initialData = {
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showHomepage, setShowHomepage] = useState(true);
   const [data, setData] = useState(initialData);
 
   // Load saved user from localStorage on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
+    const savedUser = localStorage.getItem("currentUser");
     if (savedUser) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setIsAuthenticated(true);
+      setShowHomepage(false);
     }
   }, []);
 
@@ -108,15 +110,28 @@ function App() {
       localStorage.setItem('currentUser', JSON.stringify(user));
       setCurrentUser(user);
       setIsAuthenticated(true);
+      setShowHomepage(false);
       return { success: true, user };
     }
     return { success: false, error: 'Invalid credentials' };
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem("currentUser");
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setShowHomepage(true);
+  };
+
+  const handleNavigateToLogin = () => {
+    setShowHomepage(false);
+  };
+
+  const handleNavigateHome = () => {
+    setShowHomepage(true);
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    localStorage.removeItem("currentUser");
   };
 
   const addOrder = (order) => {
@@ -124,19 +139,19 @@ function App() {
       ...order,
       id: Date.now(),
       createdAt: new Date().toISOString(),
-      status: 'pending'
+      status: "pending",
     };
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      orders: [...prev.orders, newOrder]
+      orders: [...prev.orders, newOrder],
     }));
     return newOrder;
   };
 
   const updateOrder = (order) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      orders: prev.orders.map(o => o.id === order.id ? order : o)
+      orders: prev.orders.map((o) => (o.id === order.id ? order : o)),
     }));
   };
 
@@ -145,81 +160,87 @@ function App() {
       ...project,
       id: Date.now(),
       createdAt: new Date().toISOString(),
-      status: 'active'
+      status: "active",
     };
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      projects: [...prev.projects, newProject]
+      projects: [...prev.projects, newProject],
     }));
     return newProject;
   };
 
   const updateProject = (project) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      projects: prev.projects.map(p => p.id === project.id ? project : p)
+      projects: prev.projects.map((p) => (p.id === project.id ? project : p)),
     }));
   };
 
   const addUser = (user) => {
     const newUser = {
       ...user,
-      id: Date.now()
+      id: Date.now(),
     };
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      users: [...prev.users, newUser]
+      users: [...prev.users, newUser],
     }));
     return newUser;
   };
 
   const updateUser = (user) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      users: prev.users.map(u => u.id === user.id ? user : u)
+      users: prev.users.map((u) => (u.id === user.id ? user : u)),
     }));
   };
 
   const deleteUser = (userId) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      users: prev.users.filter(u => u.id !== userId)
+      users: prev.users.filter((u) => u.id !== userId),
     }));
   };
 
   const addProduct = (product) => {
     const newProduct = {
       ...product,
-      id: Date.now()
+      id: Date.now(),
     };
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      products: [...prev.products, newProduct]
+      products: [...prev.products, newProduct],
     }));
     return newProduct;
   };
 
   const updateProduct = (product) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      products: prev.products.map(p => p.id === product.id ? product : p)
+      products: prev.products.map((p) => (p.id === product.id ? product : p)),
     }));
   };
 
   const deleteProduct = (productId) => {
-    setData(prev => ({
+    setData((prev) => ({
       ...prev,
-      products: prev.products.filter(p => p.id !== productId)
+      products: prev.products.filter((p) => p.id !== productId),
     }));
   };
 
+  // Show homepage if not authenticated and showHomepage is true
+  if (!isAuthenticated && showHomepage) {
+    return <Homepage onNavigateToLogin={handleNavigateToLogin} />;
+  }
+
+  // Show login if not authenticated and showHomepage is false
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
 
   const renderDashboard = () => {
     switch (currentUser.role) {
-      case 'customer':
+      case "customer":
         return (
           <CustomerDashboard
             user={currentUser}
@@ -228,7 +249,7 @@ function App() {
             onAddOrder={addOrder}
           />
         );
-      case 'project_manager':
+      case "project_manager":
         return (
           <ProjectManagerDashboard
             user={currentUser}
@@ -237,7 +258,7 @@ function App() {
             onUpdateProject={updateProject}
           />
         );
-      case 'admin':
+      case "admin":
         return (
           <AdminDashboard
             user={currentUser}
@@ -259,11 +280,13 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <Header user={currentUser} onLogout={handleLogout} />
-      <main className="main-content">
-        {renderDashboard()}
-      </main>
+    <div className="min-h-screen bg-gray-50">
+      <Header
+        user={currentUser}
+        onLogout={handleLogout}
+        onNavigateHome={handleNavigateHome}
+      />
+      <main>{renderDashboard()}</main>
     </div>
   );
 }
