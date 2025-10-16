@@ -34,13 +34,13 @@ const Header = ({ user, onLogout, onNavigateHome }) => {
               className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200"
             >
               <img
-                src="/agung-logo.png"
+                src="/public/Gambar/LogoAgungBetonKendari.jpeg"
                 alt="Agung Beton"
                 className="h-10 w-10 object-contain"
               />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  PT. Agung Bumi Karsa
+                  PT. Agung Beton Kendari
                 </h1>
                 <p className="text-sm text-gray-600">Sistem Manajemen Proyek</p>
               </div>

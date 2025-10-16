@@ -25,16 +25,16 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-800 via-black/30 to-red-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="/agung-logo.png"
+            src="/public/Gambar/LogoAgungBetonKendari.jpeg"
             alt="Agung Beton"
             className="w-16 h-16 mx-auto mb-4 object-contain"
           />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            PT. Agung Bumi Karsa
+            PT. Agung Beton Kendari
           </h2>
           <p className="text-gray-600">Sistem Manajemen Proyek</p>
         </div>
