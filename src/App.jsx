@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import Homepage from "./components/Homepage";
-import Login from './components/Login';
-import Header from './components/Header';
-import CustomerDashboard from './pages/CustomerDashboard';
-import ProjectManagerDashboard from './pages/ProjectManagerDashboard';
+import Login from "./components/Login";
+import Header from "./components/Header";
+import CustomerDashboard from "./pages/CustomerDashboard";
+import ProjectManagerDashboard from "./pages/ProjectManagerDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
 // Mock data
@@ -11,80 +11,80 @@ const initialData = {
   users: [
     {
       id: 1,
-      username: 'admin',
-      password: 'admin123',
-      role: 'admin',
-      name: 'Administrator',
-      email: 'admin@agungbeton.com'
+      username: "admin",
+      password: "admin123",
+      role: "admin",
+      name: "Administrator",
+      email: "admin@agungbeton.com",
     },
     {
       id: 2,
-      username: 'customer1',
-      password: 'customer123',
-      role: 'customer',
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '081234567890'
+      username: "customer1",
+      password: "customer123",
+      role: "customer",
+      name: "John Doe",
+      email: "john@example.com",
+      phone: "081234567890",
     },
     {
       id: 3,
-      username: 'pm1',
-      password: 'pm123',
-      role: 'project_manager',
-      name: 'Jane Smith',
-      email: 'jane@agungbeton.com',
-      phone: '081234567891'
-    }
+      username: "pm1",
+      password: "pm123",
+      role: "project_manager",
+      name: "Jane Smith",
+      email: "jane@agungbeton.com",
+      phone: "081234567891",
+    },
   ],
   products: [
     {
       id: 1,
-      name: 'Aspal & Marka Jalan',
-      category: 'Aspal',
+      name: "Aspal & Marka Jalan",
+      category: "Aspal",
       price: 500000,
-      unit: 'ton',
-      description: 'Material aspal berkualitas tinggi untuk pembangunan jalan'
+      unit: "ton",
+      description: "Material aspal berkualitas tinggi untuk pembangunan jalan",
     },
     {
       id: 2,
-      name: 'Beton Readymix',
-      category: 'Beton',
+      name: "Beton Readymix",
+      category: "Beton",
       price: 800000,
-      unit: 'm³',
-      description: 'Beton siap pakai dengan kualitas terjamin'
+      unit: "m³",
+      description: "Beton siap pakai dengan kualitas terjamin",
     },
     {
       id: 3,
-      name: 'Beton Precast',
-      category: 'Beton',
+      name: "Beton Precast",
+      category: "Beton",
       price: 1200000,
-      unit: 'unit',
-      description: 'Beton precast untuk berbagai keperluan konstruksi'
+      unit: "unit",
+      description: "Beton precast untuk berbagai keperluan konstruksi",
     },
     {
       id: 4,
-      name: 'Split / Batu Pecah',
-      category: 'Agregat',
+      name: "Split / Batu Pecah",
+      category: "Agregat",
       price: 300000,
-      unit: 'm³',
-      description: 'Material agregat untuk campuran beton'
-    }
+      unit: "m³",
+      description: "Material agregat untuk campuran beton",
+    },
   ],
   orders: [],
   projects: [
     {
       id: 1,
-      name: 'Pembangunan Jalan Raya Kendari',
-      location: 'Kendari, Sulawesi Tenggara',
-      description: 'Proyek pembangunan jalan raya sepanjang 5 km',
+      name: "Pembangunan Jalan Raya Kendari",
+      location: "Kendari, Sulawesi Tenggara",
+      description: "Proyek pembangunan jalan raya sepanjang 5 km",
       projectManagerId: 3,
-      status: 'active',
-      startDate: '2025-01-15',
-      endDate: '2025-06-15',
+      status: "active",
+      startDate: "2025-01-15",
+      endDate: "2025-06-15",
       budget: 5000000000,
-      createdAt: '2025-01-01T00:00:00.000Z'
-    }
-  ]
+      createdAt: "2025-01-01T00:00:00.000Z",
+    },
+  ],
 };
 
 function App() {
@@ -92,6 +92,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showHomepage, setShowHomepage] = useState(true);
   const [data, setData] = useState(initialData);
+  // RAB (budget) requests submitted by customers and proposals created by PMs
+  const [rabs, setRabs] = useState([]);
+  const [proposals, setProposals] = useState([]);
 
   // Load saved user from localStorage on mount
   useEffect(() => {
@@ -105,15 +108,17 @@ function App() {
   }, []);
 
   const handleLogin = (username, password) => {
-    const user = data.users.find(u => u.username === username && u.password === password);
+    const user = data.users.find(
+      (u) => u.username === username && u.password === password
+    );
     if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem("currentUser", JSON.stringify(user));
       setCurrentUser(user);
       setIsAuthenticated(true);
       setShowHomepage(false);
       return { success: true, user };
     }
-    return { success: false, error: 'Invalid credentials' };
+    return { success: false, error: "Invalid credentials" };
   };
 
   const handleLogout = () => {
@@ -214,6 +219,52 @@ function App() {
     return newProduct;
   };
 
+  // --- RAB / Budget request handlers (customers submit RABs) ---
+  const addRAB = (rab) => {
+    const newRAB = {
+      ...rab,
+      id: Date.now(),
+      status: "submitted",
+      createdAt: new Date().toISOString(),
+    };
+    setRabs((prev) => [newRAB, ...prev]);
+    return newRAB;
+  };
+
+  const updateRAB = (updated) => {
+    setRabs((prev) =>
+      prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+    );
+  };
+
+  // --- Proposal handlers (PM creates proposals in response to RABs) ---
+  const addProposal = (proposal) => {
+    const newProposal = {
+      ...proposal,
+      id: Date.now(),
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    };
+    setProposals((prev) => [newProposal, ...prev]);
+    return newProposal;
+  };
+
+  const updateProposal = (updated) => {
+    setProposals((prev) =>
+      prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+    );
+  };
+
+  const sendProposal = (proposalId) => {
+    setProposals((prev) =>
+      prev.map((p) =>
+        p.id === proposalId
+          ? { ...p, status: "sent", sentAt: new Date().toISOString() }
+          : p
+      )
+    );
+  };
+
   const updateProduct = (product) => {
     setData((prev) => ({
       ...prev,
@@ -247,6 +298,8 @@ function App() {
             products={data.products}
             orders={data.orders}
             onAddOrder={addOrder}
+            rabs={rabs}
+            onAddRAB={addRAB}
           />
         );
       case "project_manager":
@@ -256,6 +309,11 @@ function App() {
             projects={data.projects}
             products={data.products}
             onUpdateProject={updateProject}
+            rabs={rabs}
+            proposals={proposals}
+            onAddProposal={addProposal}
+            onUpdateProposal={updateProposal}
+            onSendProposal={sendProposal}
           />
         );
       case "admin":

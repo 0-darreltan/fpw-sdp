@@ -1,6 +1,6 @@
 import React from "react";
 
-const ProductCatalog = ({ products }) => {
+const ProductCatalog = ({ products, onAddToCart }) => {
   const formatPrice = (price) => {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -67,8 +67,11 @@ const ProductCatalog = ({ products }) => {
             </div>
 
             <div className="px-6 pb-6">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md font-medium transition-colors duration-200">
-                Minta Penawaran
+              <button
+                onClick={() => onAddToCart && onAddToCart(product)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md font-medium transition-colors duration-200"
+              >
+                Tambah ke Pesanan
               </button>
             </div>
           </div>
