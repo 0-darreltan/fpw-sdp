@@ -92,6 +92,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showHomepage, setShowHomepage] = useState(true);
   const [data, setData] = useState(initialData);
+  // RAB (budget) requests submitted by customers and proposals created by PMs
+  const [rabs, setRabs] = useState([]);
+  const [proposals, setProposals] = useState([]);
 
   // Load saved user from localStorage on mount
   useEffect(() => {
@@ -105,15 +108,17 @@ function App() {
   }, []);
 
   const handleLogin = (username, password) => {
-    const user = data.users.find(u => u.username === username && u.password === password);
+    const user = data.users.find(
+      (u) => u.username === username && u.password === password
+    );
     if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem("currentUser", JSON.stringify(user));
       setCurrentUser(user);
       setIsAuthenticated(true);
       setShowHomepage(false);
       return { success: true, user };
     }
-    return { success: false, error: 'Invalid credentials' };
+    return { success: false, error: "Invalid credentials" };
   };
 
   const handleLogout = () => {
@@ -214,6 +219,52 @@ function App() {
     return newProduct;
   };
 
+  // --- RAB / Budget request handlers (customers submit RABs) ---
+  const addRAB = (rab) => {
+    const newRAB = {
+      ...rab,
+      id: Date.now(),
+      status: "submitted",
+      createdAt: new Date().toISOString(),
+    };
+    setRabs((prev) => [newRAB, ...prev]);
+    return newRAB;
+  };
+
+  const updateRAB = (updated) => {
+    setRabs((prev) =>
+      prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r))
+    );
+  };
+
+  // --- Proposal handlers (PM creates proposals in response to RABs) ---
+  const addProposal = (proposal) => {
+    const newProposal = {
+      ...proposal,
+      id: Date.now(),
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    };
+    setProposals((prev) => [newProposal, ...prev]);
+    return newProposal;
+  };
+
+  const updateProposal = (updated) => {
+    setProposals((prev) =>
+      prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+    );
+  };
+
+  const sendProposal = (proposalId) => {
+    setProposals((prev) =>
+      prev.map((p) =>
+        p.id === proposalId
+          ? { ...p, status: "sent", sentAt: new Date().toISOString() }
+          : p
+      )
+    );
+  };
+
   const updateProduct = (product) => {
     setData((prev) => ({
       ...prev,
@@ -247,6 +298,8 @@ function App() {
             products={data.products}
             orders={data.orders}
             onAddOrder={addOrder}
+            rabs={rabs}
+            onAddRAB={addRAB}
           />
         );
       case "project_manager":
@@ -256,6 +309,11 @@ function App() {
             projects={data.projects}
             products={data.products}
             onUpdateProject={updateProject}
+            rabs={rabs}
+            proposals={proposals}
+            onAddProposal={addProposal}
+            onUpdateProposal={updateProposal}
+            onSendProposal={sendProposal}
           />
         );
       case "admin":
