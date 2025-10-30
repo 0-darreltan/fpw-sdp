@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-const OrderForm = ({ products, user, onAddOrder }) => {
+const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
   const [orderData, setOrderData] = useState({
     projectName: "",
     projectLocation: "",
@@ -15,6 +15,33 @@ const OrderForm = ({ products, user, onAddOrder }) => {
     notes: "",
   });
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Merge initialItems (from catalog quick add) into order items when they change
+  useEffect(() => {
+    if (initialItems && initialItems.length > 0) {
+      // map initialItems to full item objects
+      const mapped = initialItems.map((it) => {
+        const product = products.find((p) => p.id === it.productId);
+        return {
+          id: it.id || Date.now() + Math.floor(Math.random() * 1000),
+          product,
+          quantity: it.quantity || 1,
+          notes: it.notes || "",
+          subtotal: product ? product.price * (it.quantity || 1) : 0,
+        };
+      });
+
+      // avoid duplicating if already present by checking product ids
+      setOrderData((prev) => {
+        const existingProductIds = prev.items.map((i) => i.product.id);
+        const toAdd = mapped.filter((m) => !existingProductIds.includes(m.product.id));
+        return {
+          ...prev,
+          items: [...prev.items, ...toAdd],
+        };
+      });
+    }
+  }, [initialItems, products]);
 
   const handleInputChange = (e) => {
     setOrderData({

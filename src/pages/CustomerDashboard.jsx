@@ -12,6 +12,8 @@ const CustomerDashboard = ({
   onAddRAB,
 }) => {
   const [activeTab, setActiveTab] = useState("catalog");
+  // Cart state for quick add-to-order from product catalog
+  const [cartItems, setCartItems] = useState([]);
 
   // Form state for creating RAB (budget) requests
   const [rabProjectName, setRabProjectName] = useState("");
@@ -31,10 +33,42 @@ const CustomerDashboard = ({
   const renderActiveTab = () => {
     switch (activeTab) {
       case "catalog":
-        return <ProductCatalog products={products} />;
+        return (
+          <ProductCatalog
+            products={products}
+            onAddToCart={(product) => {
+              // add or increment
+              setCartItems((prev) => {
+                const existing = prev.find((p) => p.productId === product.id);
+                if (existing) {
+                  return prev.map((p) =>
+                    p.productId === product.id
+                      ? { ...p, quantity: p.quantity + 1 }
+                      : p
+                  );
+                }
+                return [
+                  ...prev,
+                  { productId: product.id, quantity: 1, id: Date.now() },
+                ];
+              });
+              // open order tab for checkout
+              setActiveTab("order");
+            }}
+          />
+        );
       case "order":
         return (
-          <OrderForm products={products} user={user} onAddOrder={onAddOrder} />
+          <OrderForm
+            products={products}
+            user={user}
+            onAddOrder={(order) => {
+              // call parent handler and clear cart
+              if (onAddOrder) onAddOrder(order);
+              setCartItems([]);
+            }}
+            initialItems={cartItems}
+          />
         );
       case "history":
         return <OrderHistory orders={orders} user={user} />;

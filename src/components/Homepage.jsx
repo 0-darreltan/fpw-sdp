@@ -65,7 +65,7 @@ const Homepage = ({ onNavigateToLogin }) => {
             <span className="block text-yellow-300">Indonesia</span>
           </h1>
           <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
-            PT. Agung Bumi Karsa adalah perusahaan konstruksi terpercaya yang
+            PT. Agung Beton Kendari adalah perusahaan konstruksi terpercaya yang
             berdedikasi membangun infrastruktur berkualitas tinggi untuk
             kemajuan bangsa.
           </p>
