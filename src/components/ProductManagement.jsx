@@ -16,24 +16,32 @@ const ProductManagement = ({
     description: "",
     stock: "",
     status: "active",
+    unitOther: "",
   });
+
+  const units = ["pcs", "kg", "m3", "unit", "liter", "m", "set"];
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const productData = {
       ...formData,
-      price: parseFloat(formData.price),
-      stock: parseInt(formData.stock),
+      price: parseFloat(formData.price) || 0,
+      stock: parseInt(formData.stock) || 0,
+      unit:
+        formData.unit === "other" ? formData.unitOther || "" : formData.unit,
     };
 
     if (editingProduct) {
-      onUpdateProduct(editingProduct.id, productData);
-    } else {
-      onAddProduct({
-        id: Date.now(),
+      // Parent expects a full product object for update
+      const updatedProduct = {
+        ...editingProduct,
         ...productData,
-        createdAt: new Date().toISOString(),
-      });
+        id: editingProduct.id,
+      };
+      onUpdateProduct(updatedProduct);
+    } else {
+      // Let parent assign id/createdAt
+      onAddProduct(productData);
     }
     resetForm();
   };
@@ -47,6 +55,7 @@ const ProductManagement = ({
       description: "",
       stock: "",
       status: "active",
+      unitOther: "",
     });
     setEditingProduct(null);
     setShowModal(false);
@@ -54,10 +63,12 @@ const ProductManagement = ({
 
   const handleEdit = (product) => {
     setEditingProduct(product);
+    const isKnownUnit = units.includes(product.unit);
     setFormData({
       name: product.name,
       category: product.category,
-      unit: product.unit,
+      unit: isKnownUnit ? product.unit : "other",
+      unitOther: isKnownUnit ? "" : product.unit,
       price: product.price.toString(),
       description: product.description,
       stock: product.stock?.toString() || "",
@@ -311,16 +322,33 @@ const ProductManagement = ({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Satuan
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.unit}
                     onChange={(e) =>
                       setFormData({ ...formData, unit: e.target.value })
                     }
-                    placeholder="kg, m³, pcs, dll"
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  >
+                    <option value="">Pilih satuan</option>
+                    {units.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                    <option value="other">Lainnya (isi manual)</option>
+                  </select>
+                  {formData.unit === "other" && (
+                    <input
+                      type="text"
+                      placeholder="Masukkan satuan lainnya"
+                      value={formData.unitOther || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, unitOther: e.target.value })
+                      }
+                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

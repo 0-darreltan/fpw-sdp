@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import OrderForm from '../components/OrderForm';
-import OrderHistory from '../components/OrderHistory';
+import React, { useState } from "react";
+import OrderForm from "../components/OrderForm";
+import OrderHistory from "../components/OrderHistory";
 import ProductCatalog from "../components/ProductCatalog";
 
 const CustomerDashboard = ({
@@ -95,29 +95,75 @@ const CustomerDashboard = ({
               />
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  className="border rounded-md p-2"
-                  placeholder="Nama item"
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                />
-                <input
-                  type="number"
-                  className="border rounded-md p-2"
-                  placeholder="Kuantitas"
-                  value={itemQty}
-                  min={1}
-                  onChange={(e) => setItemQty(Number(e.target.value))}
-                />
-                <input
-                  type="number"
-                  className="border rounded-md p-2"
-                  placeholder="Harga satuan"
-                  value={itemPrice}
-                  min={0}
-                  onChange={(e) => setItemPrice(Number(e.target.value))}
-                />
+                <div>
+                  <label
+                    htmlFor="itemName"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Item
+                  </label>
+                  <select
+                    id="itemName"
+                    className="border rounded-md p-2 w-full"
+                    value={itemName}
+                    onChange={(e) => {
+                      const selectedName = e.target.value;
+                      setItemName(selectedName);
+                      // try to find product and autofill price
+                      const prod = products?.find(
+                        (p) => p.name === selectedName
+                      );
+                      setItemPrice(prod ? Number(prod.price || 0) : 0);
+                    }}
+                  >
+                    <option value="">Pilih item dari katalog</option>
+                    {products &&
+                      products.map((p) => (
+                        <option key={p.id} value={p.name}>
+                          {p.name}
+                          {p.price
+                            ? ` - Rp ${Number(p.price).toLocaleString()}`
+                            : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="itemQty"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Kuantitas
+                  </label>
+                  <input
+                    id="itemQty"
+                    type="number"
+                    className="border rounded-md p-2 w-full"
+                    placeholder="Kuantitas"
+                    value={itemQty}
+                    min={1}
+                    onChange={(e) => setItemQty(Number(e.target.value))}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="itemPrice"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Harga satuan
+                  </label>
+                  <input
+                    id="itemPrice"
+                    type="number"
+                    className="border rounded-md p-2 w-full"
+                    placeholder="Harga satuan"
+                    value={itemPrice}
+                    min={0}
+                    onChange={(e) => setItemPrice(Number(e.target.value))}
+                  />
+                </div>
               </div>
               <div className="flex gap-2">
                 <button

@@ -9,6 +9,8 @@ const ProjectMonitoring = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [detailProject, setDetailProject] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     client: "",
@@ -23,20 +25,26 @@ const ProjectMonitoring = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // Normalize data shape: parent expects projectManagerId and handles id/status
     const projectData = {
       ...formData,
       budget: parseFloat(formData.budget),
+      projectManagerId: formData.projectManager
+        ? Number(formData.projectManager)
+        : null,
     };
 
     if (editingProject) {
-      onUpdateProject(editingProject.id, projectData);
-    } else {
-      onAddProject({
-        id: Date.now(),
+      // Parent `updateProject` expects a full project object (with id)
+      const updatedProject = {
+        ...editingProject,
         ...projectData,
-        createdAt: new Date().toISOString(),
-        progress: 0,
-      });
+        id: editingProject.id,
+      };
+      onUpdateProject(updatedProject);
+    } else {
+      // Let parent `addProject` assign id/createdAt/status
+      onAddProject(projectData);
     }
     resetForm();
   };
@@ -67,10 +75,19 @@ const ProjectMonitoring = ({
       endDate: project.endDate?.split("T")[0] || "",
       budget: project.budget?.toString() || "",
       status: project.status,
-      projectManager: project.projectManager,
+      projectManager: project.projectManagerId
+        ? String(project.projectManagerId)
+        : project.projectManager
+        ? String(project.projectManager)
+        : "",
       description: project.description || "",
     });
     setShowModal(true);
+  };
+
+  const handleShowDetail = (project) => {
+    setDetailProject(project);
+    setShowDetailModal(true);
   };
 
   const formatPrice = (price) => {
@@ -150,7 +167,8 @@ const ProjectMonitoring = ({
   };
 
   const getProjectManager = (pmId) => {
-    const pm = users.find((user) => user.id === pmId);
+    const id = pmId == null ? pmId : Number(pmId);
+    const pm = users.find((user) => user.id === id);
     return pm ? pm.name : "Belum ditentukan";
   };
 
@@ -205,7 +223,9 @@ const ProjectMonitoring = ({
                   </p>
                   <p className="text-gray-600">
                     <span className="font-medium text-gray-900">PM:</span>{" "}
-                    {getProjectManager(project.projectManager)}
+                    {getProjectManager(
+                      project.projectManagerId || project.projectManager
+                    )}
                   </p>
                   <p className="text-gray-600">
                     <span className="font-medium text-gray-900">Budget:</span>{" "}
@@ -272,7 +292,10 @@ const ProjectMonitoring = ({
                 >
                   Edit
                 </button>
-                <button className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200 text-sm font-medium">
+                <button
+                  className="flex-1 px-3 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors duration-200 text-sm font-medium"
+                  onClick={() => handleShowDetail(project)}
+                >
                   Detail
                 </button>
               </div>
@@ -471,6 +494,148 @@ const ProjectMonitoring = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && detailProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h4 className="text-xl font-bold text-gray-900">Detail Proyek</h4>
+              <button
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                onClick={() => {
+                  setDetailProject(null);
+                  setShowDetailModal(false);
+                }}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {detailProject.name}
+                  </h3>
+                  <div className="mt-2">
+                    {getStatusBadge(detailProject.status)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">PM</div>
+                  <div className="font-medium text-gray-900">
+                    {getProjectManager(
+                      detailProject.projectManagerId ||
+                        detailProject.projectManager
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                  <div className="text-sm text-gray-500">Klien</div>
+                  <div className="font-medium text-gray-900">
+                    {detailProject.client}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Lokasi</div>
+                  <div className="font-medium text-gray-900">
+                    {detailProject.location}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Mulai</div>
+                  <div className="font-medium text-gray-900">
+                    {formatDate(detailProject.startDate)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500">Selesai</div>
+                  <div className="font-medium text-gray-900">
+                    {formatDate(detailProject.endDate)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="text-sm text-gray-500">Budget</div>
+                <div className="font-medium text-gray-900">
+                  {formatPrice(detailProject.budget)}
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <div className="text-sm text-gray-500 mb-2">Progress</div>
+                {getProgressBar(detailProject.progress || 0)}
+              </div>
+
+              <div className="mb-4">
+                <h5 className="text-lg font-semibold text-gray-900 mb-2">
+                  Pesanan Terkait
+                </h5>
+                <div className="space-y-3">
+                  {getProjectOrders(detailProject.id).length === 0 && (
+                    <div className="text-sm text-gray-500">
+                      Belum ada pesanan.
+                    </div>
+                  )}
+                  {getProjectOrders(detailProject.id).map((o) => (
+                    <div
+                      key={o.id}
+                      className="p-3 border rounded-md bg-gray-50"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {o.title || `Pesanan #${o.id}`}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Status: {o.status}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium text-gray-900">
+                            {formatPrice(o.total || 0)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {formatDate(o.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => {
+                    setDetailProject(null);
+                    setShowDetailModal(false);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
