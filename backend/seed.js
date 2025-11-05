@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { User, Product, Project, Order, RAB, Proposal } = require('./src/models');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/fpw-sdp';
+const MONGO_URI = process.env.MONGO_URI;
+const databaseName = 'db_agungbetonkendari';
 
 const initialData = {
   users: [
@@ -24,7 +25,8 @@ const initialData = {
 
 async function seed() {
   try {
-    await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+    await mongoose.connect(`${MONGO_URI}${databaseName}`, { useNewUrlParser: true, useUnifiedTopology: true });
     console.log('Connected to', MONGO_URI);
 
     // Clear existing data
