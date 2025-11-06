@@ -17,12 +17,12 @@ const updateUser = async (req, res) => {};
 const deleteUser = async (req, res) => {};
 
 module.exports = {
-    getUser,
-    getUserById,
-    LoginUser,
-    RegisterUser,
-    LogOutUser,
-    createUser,
-    updateUser,
-    deleteUser,
+  getUser,
+  getUserById,
+  LoginUser,
+  RegisterUser,
+  LogOutUser,
+  createUser,
+  updateUser,
+  deleteUser,
 };
