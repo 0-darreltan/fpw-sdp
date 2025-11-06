@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Homepage from "./components/Homepage";
 import Login from "./components/Login";
+import Register from "./components/Register";
 import Header from "./components/Header";
 import CustomerDashboard from "./pages/CustomerDashboard";
 import ProjectManagerDashboard from "./pages/ProjectManagerDashboard";
@@ -91,6 +92,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showHomepage, setShowHomepage] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
   const [data, setData] = useState(initialData);
   // RAB (budget) requests submitted by customers and proposals created by PMs
   const [rabs, setRabs] = useState([]);
@@ -130,13 +132,20 @@ function App() {
 
   const handleNavigateToLogin = () => {
     setShowHomepage(false);
+    setShowRegister(false);
   };
+
+  const handleNavigateToRegister = () => {
+    setShowHomepage(false);
+    setShowRegister(true);
+  }
 
   const handleNavigateHome = () => {
     setShowHomepage(true);
     setIsAuthenticated(false);
     setCurrentUser(null);
     localStorage.removeItem("currentUser");
+    setShowRegister(false);
   };
 
   const addOrder = (order) => {
@@ -281,10 +290,15 @@ function App() {
 
   // Show homepage if not authenticated and showHomepage is true
   if (!isAuthenticated && showHomepage) {
-    return <Homepage onNavigateToLogin={handleNavigateToLogin} />;
+    return <Homepage onNavigateToLogin={handleNavigateToLogin} onNavigateToRegister={handleNavigateToRegister} />;
   }
 
-  // Show login if not authenticated and showHomepage is false
+  // Show register if user clicked register from homepage
+  if (!isAuthenticated && showRegister) {
+    return <Register onRegistered={() => setShowRegister(false)} />;
+  }
+
+  // Show login if not authenticated (default when not showing homepage or register)
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }

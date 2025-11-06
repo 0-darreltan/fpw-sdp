@@ -14,8 +14,24 @@ const {
 } = require("../controllers/UserController");
 
 // 🔐 Middleware
-const authMiddleware = require("../middleware/authMiddleware");
-const { cekAdmin, cekProjectManager } = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
+const { cekAdmin, cekProjectManager } = require("../middlewares/roleMiddleware");
+
+// Debug: check imported types to catch any non-function exports
+console.log("[userRoute] imports:", {
+  authMiddleware: typeof authMiddleware,
+  cekAdmin: typeof cekAdmin,
+  cekProjectManager: typeof cekProjectManager,
+  getUser: typeof getUser,
+  getUserById: typeof getUserById,
+  LoginUser: typeof LoginUser,
+  RegisterUser: typeof RegisterUser,
+  LogOutUser: typeof LogOutUser,
+  createUser: typeof createUser,
+  updateUser: typeof updateUser,
+  deleteUser: typeof deleteUser,
+  acceptProposal: typeof acceptProposal,
+});
 
 // ✅ Public routes (tidak butuh token)
 router.post("/login", LoginUser);

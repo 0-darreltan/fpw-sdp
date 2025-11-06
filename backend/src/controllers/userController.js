@@ -77,6 +77,33 @@ const RegisterUser = async (req, res) => {
   }
 };
 
+// ✅ CREATE user (hanya Admin) - mirip dengan RegisterUser tapi dapat dipanggil oleh Admin
+const createUser = async (req, res) => {
+  try {
+    const { username, password, role, name, email, phone } = req.body;
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(409).json({ message: "User already exists" });
+
+    const user = new User({ username, password, role, name, email, phone });
+    await user.save();
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        phone: user.phone,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error: " + error });
+  }
+};
+
 // ✅ UPDATE user (user sendiri atau admin)
 const updateUser = async (req, res) => {
   try {
@@ -129,6 +156,8 @@ module.exports = {
   LoginUser,
   RegisterUser,
   LogOutUser,
+  createUser,
   updateUser,
   deleteUser,
   acceptProposal,
+}

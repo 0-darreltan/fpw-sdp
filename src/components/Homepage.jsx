@@ -1,6 +1,6 @@
 import React from "react";
 
-const Homepage = ({ onNavigateToLogin }) => {
+const Homepage = ({ onNavigateToLogin, onNavigateToRegister }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800">
       {/* Navigation */}
@@ -23,12 +23,22 @@ const Homepage = ({ onNavigateToLogin }) => {
                 </p>
               </div>
             </div>
-            <button
-              onClick={onNavigateToLogin}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
-            >
-              Login Sistem
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onNavigateToRegister}
+                aria-label="Register"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+              >
+                Register
+              </button>
+              <button
+                onClick={onNavigateToLogin}
+                aria-label="Login Sistem"
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+              >
+                Login Sistem
+              </button>
+            </div>
           </div>
         </div>
       </nav>

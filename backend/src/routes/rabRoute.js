@@ -8,8 +8,8 @@ const {
   deleteRAB,
 } = require("../controllers/rabController");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const { cekAdmin, cekProjectManager } = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
+const { cekAdmin, cekProjectManager } = require("../middlewares/roleMiddleware");
 
 // Semua RAB hanya bisa diakses oleh user login
 router.get("/", authMiddleware, getRAB);

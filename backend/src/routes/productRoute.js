@@ -8,8 +8,8 @@ const {
   deleteProduct,
 } = require("../controllers/productController");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const { cekAdmin } = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
+const { cekAdmin } = require("../middlewares/roleMiddleware");
 
 router.get("/", authMiddleware, getProduct);
 router.get("/:id", authMiddleware, getProductById);

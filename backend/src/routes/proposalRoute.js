@@ -8,8 +8,8 @@ const {
   deleteProposal,
 } = require("../controllers/proposalController");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const { cekAdmin, cekProjectManager } = require("../middleware/roleMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
+const { cekAdmin, cekProjectManager } = require("../middlewares/roleMiddleware");
 
 router.get("/", authMiddleware, getProposal);
 router.get("/:id", authMiddleware, getProposalById);
