@@ -8,10 +8,18 @@ const {
   deleteRAB,
 } = require("../controllers/rabController");
 
-router.get("/", getRAB);
-router.get("/:id", getRABById);
-router.post("/", createRAB);
-router.put("/:id", updateRAB);
-router.delete("/:id", deleteRAB);
+const authMiddleware = require("../middleware/authMiddleware");
+const { cekAdmin, cekProjectManager } = require("../middleware/roleMiddleware");
+
+// Semua RAB hanya bisa diakses oleh user login
+router.get("/", authMiddleware, getRAB);
+router.get("/:id", authMiddleware, getRABById);
+
+// Buat dan ubah RAB hanya oleh Project Manager atau Admin
+router.post("/", authMiddleware, cekProjectManager, createRAB);
+router.put("/:id", authMiddleware, cekProjectManager, updateRAB);
+
+// Hapus RAB hanya oleh Admin
+router.delete("/:id", authMiddleware, cekAdmin, deleteRAB);
 
 module.exports = router;
