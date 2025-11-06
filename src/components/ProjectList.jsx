@@ -1,6 +1,6 @@
 import React from "react";
 
-const ProjectList = ({ projects, user }) => {
+const ProjectList = ({ projects, user, onEditProject }) => {
   // Filter projects assigned to current PM
   const myProjects = projects.filter(
     (project) => project.projectManagerId === user.id
@@ -206,6 +206,14 @@ const ProjectList = ({ projects, user }) => {
               <button className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 text-sm font-medium">
                 Minta Material
               </button>
+              {onEditProject && (
+                <button
+                  className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 text-sm font-medium"
+                  onClick={() => onEditProject(project)}
+                >
+                  Edit Proyek
+                </button>
+              )}
             </div>
           </div>
         ))}

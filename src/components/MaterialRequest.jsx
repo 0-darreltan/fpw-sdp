@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-const MaterialRequest = ({ products, user, projects }) => {
+const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, materials }) => {
   const [requestData, setRequestData] = useState({
     projectId: "",
     projectName: "",
@@ -103,8 +103,18 @@ const MaterialRequest = ({ products, user, projects }) => {
       createdAt: new Date().toISOString(),
     };
 
-    // In a real app, this would be sent to a material request endpoint
-    console.log("Material Request:", materialRequest);
+    // If parent provided a handler, call it so the request is persisted in app state
+    if (typeof onAddMaterialRequest === "function") {
+      try {
+        onAddMaterialRequest(materialRequest);
+      } catch (err) {
+        console.error("Failed to submit material request:", err);
+      }
+    } else {
+      // fallback to console log for dev
+      console.log("Material Request:", materialRequest);
+    }
+
     setShowSuccess(true);
 
     // Reset form
@@ -244,7 +254,7 @@ const MaterialRequest = ({ products, user, projects }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">Pilih Material</option>
-                {products.map((product) => (
+                {(materials || products || []).map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.name} - {formatPrice(product.price)}/{product.unit}
                   </option>

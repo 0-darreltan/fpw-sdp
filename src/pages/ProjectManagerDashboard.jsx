@@ -6,12 +6,16 @@ const ProjectManagerDashboard = ({
   user,
   projects,
   products,
+  materials = [],
   rabs = [],
   proposals = [],
   onAddProposal,
   onUpdateProposal,
   onSendProposal,
   onUpdateRAB,
+  onAddProject,
+  onUpdateProject,
+  onAddMaterialRequest,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
 
@@ -22,6 +26,18 @@ const ProjectManagerDashboard = ({
   const [pItemQty, setPItemQty] = useState(1);
   const [pItemPrice, setPItemPrice] = useState(0);
   const [proposalNote, setProposalNote] = useState("");
+  // Project add/edit state
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectForm, setProjectForm] = useState({
+    name: "",
+    location: "",
+    description: "",
+    projectManagerId: user?.id,
+    status: "planning",
+    startDate: "",
+    endDate: "",
+    budget: "",
+  });
 
   const tabs = [
     { id: "projects", label: "Proyek Saya", icon: "🏗️" },
@@ -32,14 +48,104 @@ const ProjectManagerDashboard = ({
   const renderActiveTab = () => {
     switch (activeTab) {
       case "projects":
-        return <ProjectList projects={projects} user={user} />;
+        // project form modal / inline
+        return (
+          <div>
+            {editingProject !== null && (
+              <div className="bg-white rounded-lg shadow p-4 mb-6">
+                <h4 className="text-lg font-medium mb-3">{editingProject?.id ? 'Edit Proyek' : 'Tambah Proyek'}</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input
+                    className="border rounded p-2"
+                    placeholder="Nama proyek"
+                    value={projectForm.name}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
+                  />
+                  <input
+                    className="border rounded p-2"
+                    placeholder="Lokasi"
+                    value={projectForm.location}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, location: e.target.value }))}
+                  />
+                  <textarea
+                    className="border rounded p-2 col-span-1 sm:col-span-2"
+                    rows={3}
+                    placeholder="Deskripsi"
+                    value={projectForm.description}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
+                  />
+                  <input
+                    type="date"
+                    className="border rounded p-2"
+                    value={projectForm.startDate}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, startDate: e.target.value }))}
+                  />
+                  <input
+                    type="date"
+                    className="border rounded p-2"
+                    value={projectForm.endDate}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, endDate: e.target.value }))}
+                  />
+                  <input
+                    type="number"
+                    className="border rounded p-2"
+                    placeholder="Budget"
+                    value={projectForm.budget}
+                    onChange={(e) => setProjectForm((p) => ({ ...p, budget: e.target.value }))}
+                  />
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    className="px-3 py-2 bg-green-600 text-white rounded"
+                    onClick={() => {
+                      const payload = {
+                        ...projectForm,
+                        projectManagerId: user?.id,
+                      };
+                      if (editingProject?.id) {
+                        // existing project update
+                        if (onUpdateProject) onUpdateProject({ ...editingProject, ...payload });
+                      } else {
+                        if (onAddProject) onAddProject(payload);
+                      }
+                      setEditingProject(null);
+                      setProjectForm({ name: "", location: "", description: "", projectManagerId: user?.id, status: "planning", startDate: "", endDate: "", budget: "" });
+                    }}
+                  >
+                    Simpan
+                  </button>
+                  <button
+                    className="px-3 py-2 bg-gray-300 rounded"
+                    onClick={() => {
+                      setEditingProject(null);
+                    }}
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="mb-4 flex justify-between items-center">
+              <h3 className="text-lg font-medium">Proyek Saya</h3>
+              <button
+                className="px-3 py-2 bg-blue-600 text-white rounded"
+                onClick={() => setEditingProject({})}
+              >
+                Tambah Proyek
+              </button>
+            </div>
+            <ProjectList projects={projects} user={user} onEditProject={(p) => { setEditingProject(p || {}); setProjectForm({ name: p?.name || "", location: p?.location || "", description: p?.description || "", projectManagerId: p?.projectManagerId || user?.id, status: p?.status || "planning", startDate: p?.startDate || "", endDate: p?.endDate || "", budget: p?.budget || "" }); }} />
+          </div>
+        );
       case "materials":
         return (
-          <MaterialRequest
-            products={products}
-            user={user}
-            projects={projects}
-          />
+            <MaterialRequest
+              products={products}
+              materials={materials}
+              user={user}
+              projects={projects}
+              onAddMaterialRequest={onAddMaterialRequest}
+            />
         );
       case "rabs":
         return (
@@ -344,6 +450,7 @@ const ProjectManagerDashboard = ({
             </div>
           </div>
         );
+      
       default:
         return <ProjectList projects={projects} user={user} />;
     }

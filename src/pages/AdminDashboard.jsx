@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import UserManagement from '../components/UserManagement';
 import ProductManagement from '../components/ProductManagement';
+import MaterialManagement from '../components/MaterialManagement';
 import OrderManagement from '../components/OrderManagement';
 import ProjectMonitoring from "../components/ProjectMonitoring";
 
 const AdminDashboard = ({
   user,
   data,
+  materialRequests = [],
+  materialTransactions = [],
+  onUpdateMaterialRequest,
   onAddUser,
   onUpdateUser,
   onDeleteUser,
@@ -16,6 +20,9 @@ const AdminDashboard = ({
   onUpdateOrder,
   onAddProject,
   onUpdateProject,
+  onAddMaterial,
+  onUpdateMaterial,
+  onDeleteMaterial,
 }) => {
   const [activeTab, setActiveTab] = useState("orders");
 
@@ -38,6 +45,24 @@ const AdminDashboard = ({
       label: "Kelola Produk",
       icon: "📦",
       count: data.products.length,
+    },
+    {
+      id: "materials",
+      label: "Kelola Material",
+      icon: "🧱",
+      count: (data.materials || []).length,
+    },
+    {
+      id: "material_requests",
+      label: "Permintaan Material",
+      icon: "📨",
+      count: (materialRequests || []).length,
+    },
+    {
+      id: "stock_report",
+      label: "Laporan Stok",
+      icon: "📊",
+      count: (materialTransactions || []).length,
     },
   ];
 
@@ -74,6 +99,112 @@ const AdminDashboard = ({
             onUpdateProduct={onUpdateProduct}
             onDeleteProduct={onDeleteProduct}
           />
+        );
+      case "materials":
+        return (
+          <MaterialManagement
+            materials={data.materials || []}
+            onAddMaterial={onAddMaterial}
+            onUpdateMaterial={onUpdateMaterial}
+            onDeleteMaterial={onDeleteMaterial}
+          />
+        );
+      case "material_requests":
+        return (
+          <div>
+            <h3 className="text-lg font-medium mb-4">Permintaan Material Masuk</h3>
+            {materialRequests.length === 0 ? (
+              <div className="text-gray-500">Belum ada permintaan material.</div>
+            ) : (
+              <div className="space-y-3">
+                {materialRequests.map((req) => (
+                  <div key={req.id} className="border rounded p-3 bg-white">
+                    <div className="flex justify-between">
+                      <div>
+                        <div className="font-medium">{req.projectName} • {req.requesterName}</div>
+                        <div className="text-sm text-gray-600">Diajukan: {new Date(req.createdAt).toLocaleString()}</div>
+                        <div className="text-sm text-gray-700 mt-2">Alasan: {req.requestReason}</div>
+                        <div className="text-sm text-gray-700 mt-2">Urgensi: {req.urgencyLevel}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm">Status: <span className="font-medium">{req.status}</span></div>
+                        <div className="text-sm text-gray-600">Total estimasi: Rp {Number(req.total || 0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      {(req.items || []).map((it) => (
+                        <div key={it.id} className="flex justify-between text-sm border-b py-2">
+                          <div>
+                            <div className="font-medium">{it.product?.name || it.name}</div>
+                            <div className="text-gray-500">{it.notes}</div>
+                          </div>
+                          <div className="text-right">{it.quantity || it.qty} {it.product?.unit || it.unit || ''}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2 justify-end">
+                      <button
+                        className="px-3 py-1 bg-green-600 text-white rounded"
+                        onClick={() => onUpdateMaterialRequest && onUpdateMaterialRequest({ ...req, status: 'approved', approvedAt: new Date().toISOString() })}
+                      >
+                        Setujui & Penuhi
+                      </button>
+                      <button
+                        className="px-3 py-1 bg-red-600 text-white rounded"
+                        onClick={() => onUpdateMaterialRequest && onUpdateMaterialRequest({ ...req, status: 'rejected', rejectedAt: new Date().toISOString() })}
+                      >
+                        Tolak
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case "stock_report":
+        return (
+          <div>
+            <h3 className="text-lg font-medium mb-4">Laporan Keluar-Masuk Material</h3>
+            {(!materialTransactions || materialTransactions.length === 0) ? (
+              <div className="text-gray-500">Belum ada transaksi material.</div>
+            ) : (
+              <div className="overflow-x-auto bg-white rounded border">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Waktu</th>
+                      <th className="px-4 py-2 text-left">Material</th>
+                      <th className="px-4 py-2 text-left">Tipe</th>
+                      <th className="px-4 py-2 text-right">Jumlah</th>
+                      <th className="px-4 py-2 text-right">Sebelum</th>
+                      <th className="px-4 py-2 text-right">Sesudah</th>
+                      <th className="px-4 py-2 text-left">Terkait</th>
+                      <th className="px-4 py-2 text-left">Oleh</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materialTransactions.map((tx) => {
+                      const mat = data.materials.find((m) => m.id === tx.materialId) || {};
+                      const userName = data.users.find((u) => u.id === tx.userId)?.name || "-";
+                      return (
+                        <tr key={tx.id} className="border-t">
+                          <td className="px-4 py-2">{new Date(tx.timestamp).toLocaleString()}</td>
+                          <td className="px-4 py-2">{mat.name || tx.materialId}</td>
+                          <td className="px-4 py-2">{tx.type === 'in' ? 'Masuk' : 'Keluar'}</td>
+                          <td className="px-4 py-2 text-right">{tx.qty}</td>
+                          <td className="px-4 py-2 text-right">{tx.prevStock}</td>
+                          <td className="px-4 py-2 text-right">{tx.newStock}</td>
+                          <td className="px-4 py-2">{tx.relatedRequestId ? `Req #${tx.relatedRequestId}` : '-'}</td>
+                          <td className="px-4 py-2">{userName}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         );
       default:
         return (

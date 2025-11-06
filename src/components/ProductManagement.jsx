@@ -14,7 +14,6 @@ const ProductManagement = ({
     unit: "",
     price: "",
     description: "",
-    stock: "",
     status: "active",
     unitOther: "",
   });
@@ -26,7 +25,6 @@ const ProductManagement = ({
     const productData = {
       ...formData,
       price: parseFloat(formData.price) || 0,
-      stock: parseInt(formData.stock) || 0,
       unit:
         formData.unit === "other" ? formData.unitOther || "" : formData.unit,
     };
@@ -53,7 +51,6 @@ const ProductManagement = ({
       unit: "",
       price: "",
       description: "",
-      stock: "",
       status: "active",
       unitOther: "",
     });
@@ -71,7 +68,6 @@ const ProductManagement = ({
       unitOther: isKnownUnit ? "" : product.unit,
       price: product.price.toString(),
       description: product.description,
-      stock: product.stock?.toString() || "",
       status: product.status || "active",
     });
     setShowModal(true);
@@ -109,7 +105,7 @@ const ProductManagement = ({
     <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-0">
-          Kelola Produk
+          Kelola Produk / Jasa (paket pekerjaan)
         </h3>
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200"
@@ -136,9 +132,7 @@ const ProductManagement = ({
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                 Harga
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                Stok
-              </th>
+              
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
@@ -173,9 +167,7 @@ const ProductManagement = ({
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
                   {formatPrice(product.price)}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900">
-                  {product.stock || "N/A"}
-                </td>
+                
                 <td className="px-4 py-3">
                   {getStatusBadge(product.status || "active")}
                 </td>
@@ -226,14 +218,10 @@ const ProductManagement = ({
               </p>
             )}
 
-            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div className="grid grid-cols-2 gap-2 text-sm mb-3">
               <div>
                 <span className="text-gray-600">Satuan: </span>
                 <span className="font-medium">{product.unit}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Stok: </span>
-                <span className="font-medium">{product.stock || "N/A"}</span>
               </div>
               <div className="col-span-2">
                 <span className="text-gray-600">Harga: </span>
@@ -304,14 +292,11 @@ const ProductManagement = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Pilih Kategori</option>
-                    <option value="Semen">Semen</option>
-                    <option value="Besi Beton">Besi Beton</option>
-                    <option value="Agregat">Agregat</option>
-                    <option value="Ready Mix">Ready Mix</option>
-                    <option value="Bata">Bata</option>
-                    <option value="Kayu">Kayu</option>
-                    <option value="Cat">Cat</option>
-                    <option value="Pipa">Pipa</option>
+                    <option value="Jasa Konstruksi">Jasa Konstruksi</option>
+                    <option value="Jasa Renovasi">Jasa Renovasi</option>
+                    <option value="Jasa Pemasangan">Jasa Pemasangan</option>
+                    <option value="Interior">Interior</option>
+                    <option value="Pekerjaan Infrastruktur">Pekerjaan Infrastruktur</option>
                     <option value="Lainnya">Lainnya</option>
                   </select>
                 </div>
@@ -366,35 +351,16 @@ const ProductManagement = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stok
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.stock}
-                    onChange={(e) =>
-                      setFormData({ ...formData, stock: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) =>
-                      setFormData({ ...formData, status: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Non-aktif</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Non-aktif</option>
+                </select>
               </div>
 
               <div>

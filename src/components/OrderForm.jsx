@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
+const OrderForm = ({ products, user, onAddOrder, initialItems = [], materials = [] }) => {
   const [orderData, setOrderData] = useState({
     projectName: "",
     projectLocation: "",
@@ -19,29 +19,31 @@ const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
   // Merge initialItems (from catalog quick add) into order items when they change
   useEffect(() => {
     if (initialItems && initialItems.length > 0) {
-      // map initialItems to full item objects
+      // map initialItems to full item objects (support products and materials)
       const mapped = initialItems.map((it) => {
-        const product = products.find((p) => p.id === it.productId);
+        const product = products.find((p) => p.id === it.productId) || null;
+        const material = !product ? materials.find((m) => m.id === it.productId) : null;
+        const source = product || material;
         return {
           id: it.id || Date.now() + Math.floor(Math.random() * 1000),
-          product,
+          product: source,
           quantity: it.quantity || 1,
           notes: it.notes || "",
-          subtotal: product ? product.price * (it.quantity || 1) : 0,
+          subtotal: source ? (source.price || 0) * (it.quantity || 1) : 0,
         };
       });
 
-      // avoid duplicating if already present by checking product ids
+      // avoid duplicating if already present by checking product/material ids
       setOrderData((prev) => {
-        const existingProductIds = prev.items.map((i) => i.product.id);
-        const toAdd = mapped.filter((m) => !existingProductIds.includes(m.product.id));
+        const existingIds = prev.items.map((i) => i.product?.id);
+        const toAdd = mapped.filter((m) => !existingIds.includes(m.product?.id));
         return {
           ...prev,
           items: [...prev.items, ...toAdd],
         };
       });
     }
-  }, [initialItems, products]);
+  }, [initialItems, products, materials]);
 
   const handleInputChange = (e) => {
     setOrderData({
@@ -57,17 +59,36 @@ const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
     });
   };
 
+  // compute BOM for currently selected product and quantity
+  const computeBomForCurrent = () => {
+    const pid = parseInt(currentItem.productId);
+    if (!pid) return [];
+    const product = products.find((p) => p.id === pid);
+    if (!product || !product.bom) return [];
+    const qtyMultiplier = parseFloat(currentItem.quantity) || 1;
+    return product.bom.map((b) => {
+      const mat = materials.find((m) => m.id === b.materialId) || {};
+      return {
+        materialId: b.materialId,
+        materialName: mat.name || `Material #${b.materialId}`,
+        unit: mat.unit || "",
+        qty: (b.qty || 0) * qtyMultiplier,
+      };
+    });
+  };
+
   const addItem = () => {
     if (currentItem.productId && currentItem.quantity) {
-      const product = products.find(
-        (p) => p.id === parseInt(currentItem.productId)
-      );
+      const pid = parseInt(currentItem.productId);
+      const product = products.find((p) => p.id === pid) || null;
+      const material = !product ? materials.find((m) => m.id === pid) : null;
+      const source = product || material;
       const item = {
         id: Date.now(),
-        product,
+        product: source,
         quantity: parseFloat(currentItem.quantity),
         notes: currentItem.notes,
-        subtotal: product.price * parseFloat(currentItem.quantity),
+        subtotal: (source?.price || 0) * parseFloat(currentItem.quantity),
       };
 
       setOrderData({
@@ -235,8 +256,8 @@ const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
         </div>
 
         <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">
-            Daftar Material
+      <h4 className="text-lg font-semibold text-gray-800 mb-4">
+        Daftar Produk
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -258,6 +279,24 @@ const OrderForm = ({ products, user, onAddOrder, initialItems = [] }) => {
                 ))}
               </select>
             </div>
+
+            {/* Show computed BOM for selected product */}
+            {currentItem.productId && (
+              <div className="mt-3 bg-white border rounded p-3">
+                <div className="text-sm font-medium text-gray-700 mb-2">Perkiraan Material yang Diperlukan</div>
+                <div className="text-sm text-gray-600">
+                  {computeBomForCurrent().length === 0 ? (
+                    <div>- Tidak ada BOM untuk produk ini -</div>
+                  ) : (
+                    <ul>
+                      {computeBomForCurrent().map((b) => (
+                        <li key={b.materialId} className="mb-1">{b.materialName} — {b.qty} {b.unit}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

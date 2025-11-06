@@ -38,38 +38,75 @@ const initialData = {
     },
   ],
   products: [
+    // Products represent finished works / service packages
     {
-      id: 1,
-      name: "Aspal & Marka Jalan",
-      category: "Aspal",
-      price: 500000,
-      unit: "ton",
-      description: "Material aspal berkualitas tinggi untuk pembangunan jalan",
+      id: 101,
+      name: "Pembuatan Jalan Raya (per km)",
+      category: "Jasa Konstruksi",
+      price: 25000000,
+      unit: "paket",
+      description: "Paket pengerjaan pembangunan jalan raya termasuk pondasi, lapisan aspal, dan marka.",
+      status: "active",
+      bom: [
+        { materialId: 1, qty: 12 }, // Aspal (ton) per km (example)
+        { materialId: 4, qty: 50 }, // Split (m3) per km (example)
+      ],
     },
     {
-      id: 2,
-      name: "Beton Readymix",
-      category: "Beton",
-      price: 800000,
-      unit: "m³",
-      description: "Beton siap pakai dengan kualitas terjamin",
+      id: 102,
+      name: "Pembangunan Jembatan (small)",
+      category: "Jasa Konstruksi",
+      price: 750000000,
+      unit: "paket",
+      description: "Paket pembangunan jembatan skala kecil hingga menengah, termasuk struktur dan finishing.",
+      status: "active",
+      bom: [
+        { materialId: 2, qty: 200 }, // Beton Readymix m3
+        { materialId: 3, qty: 20 }, // Beton Precast units
+        { materialId: 4, qty: 100 },
+      ],
     },
     {
-      id: 3,
-      name: "Beton Precast",
-      category: "Beton",
-      price: 1200000,
-      unit: "unit",
-      description: "Beton precast untuk berbagai keperluan konstruksi",
+      id: 103,
+      name: "Renovasi Kamar Mandi",
+      category: "Jasa Renovasi",
+      price: 15000000,
+      unit: "paket",
+      description: "Renovasi lengkap kamar mandi (plester, instalasi, lantai, sanitari).",
+      status: "active",
+      bom: [
+        { materialId: 3, qty: 2 },
+        { materialId: 4, qty: 0.5 },
+      ],
     },
     {
-      id: 4,
-      name: "Split / Batu Pecah",
-      category: "Agregat",
-      price: 300000,
-      unit: "m³",
-      description: "Material agregat untuk campuran beton",
+      id: 104,
+      name: "Pemasangan Atap Baja Ringan",
+      category: "Jasa Pemasangan",
+      price: 35000000,
+      unit: "paket",
+      description: "Paket pemasangan atap baja ringan untuk rumah tinggal hingga 100 m2.",
+      status: "active",
+      bom: [
+        { materialId: 4, qty: 1 },
+      ],
     },
+    {
+      id: 105,
+      name: "Kitchen Set Siap Pasang",
+      category: "Interior",
+      price: 45000000,
+      unit: "paket",
+      description: "Kitchen set prefabrikasi lengkap dengan pemasangan.",
+      status: "active",
+      bom: [],
+    },
+  ],
+  materials: [
+    { id: 1, name: 'Aspal & Marka Jalan', category: 'Aspal', unit: 'ton', price: 500000, stock: 200, description: 'Material aspal berkualitas tinggi untuk pembangunan jalan', status: 'Aktif' },
+    { id: 2, name: 'Beton Readymix', category: 'Beton', unit: 'm³', price: 800000, stock: 150, description: 'Beton siap pakai dengan kualitas terjamin', status: 'Aktif' },
+    { id: 3, name: 'Beton Precast', category: 'Beton', unit: 'unit', price: 1200000, stock: 80, description: 'Beton precast untuk berbagai keperluan konstruksi', status: 'Aktif' },
+    { id: 4, name: 'Split / Batu Pecah', category: 'Agregat', unit: 'm³', price: 300000, stock: 300, description: 'Material agregat untuk campuran beton', status: 'Aktif' },
   ],
   orders: [],
   projects: [
@@ -97,6 +134,8 @@ function App() {
   // RAB (budget) requests submitted by customers and proposals created by PMs
   const [rabs, setRabs] = useState([]);
   const [proposals, setProposals] = useState([]);
+  const [materialRequests, setMaterialRequests] = useState([]);
+  const [materialTransactions, setMaterialTransactions] = useState([]);
 
   // Load saved user from localStorage on mount
   useEffect(() => {
@@ -155,10 +194,7 @@ function App() {
       createdAt: new Date().toISOString(),
       status: "pending",
     };
-    setData((prev) => ({
-      ...prev,
-      orders: [...prev.orders, newOrder],
-    }));
+    setData((prev) => ({ ...prev, orders: [...prev.orders, newOrder] }));
     // Also create a corresponding RAB submission from the order items
     try {
       const rabFromOrder = {
@@ -208,6 +244,70 @@ function App() {
     return newProject;
   };
 
+  // --- Material request handlers (PM submits requests to admin/warehouse) ---
+  const addMaterialRequest = (request) => {
+    const newReq = {
+      ...request,
+      id: Date.now(),
+      status: request.status || "pending_approval",
+      createdAt: request.createdAt || new Date().toISOString(),
+    };
+    setMaterialRequests((prev) => [newReq, ...prev]);
+    return newReq;
+  };
+
+  const updateMaterialRequest = (updated) => {
+    // Update requests and if approved, deduct stock and create transactions
+    setMaterialRequests((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+
+    const existing = materialRequests.find((r) => r.id === updated.id) || null;
+    if (existing && existing.status !== "approved" && updated.status === "approved") {
+      // Check availability first
+      const insufficient = (updated.items || []).find((it) => {
+        const matId = it.product?.id || it.productId || it.product?.productId;
+        const mat = data.materials.find((m) => m.id === matId);
+        return !mat || (mat.stock < (it.quantity || it.qty || 0));
+      });
+      if (insufficient) {
+        // mark as rejected due to insufficient stock
+        setMaterialRequests((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated, status: "rejected", note: "Stok tidak mencukupi untuk beberapa item" } : r)));
+        return;
+      }
+
+      // Deduct stock and record transactions
+      const transactionsToAdd = [];
+      const newMaterials = data.materials.map((m) => {
+        const reqItem = (updated.items || []).find((it) => (it.product?.id || it.productId) === m.id);
+        if (reqItem) {
+          const qty = reqItem.quantity || reqItem.qty || 0;
+          const prevStock = m.stock;
+          const newStock = Math.max(0, prevStock - qty);
+          transactionsToAdd.push({
+            materialId: m.id,
+            type: "out",
+            qty: qty,
+            prevStock,
+            newStock,
+            relatedRequestId: updated.id,
+            userId: updated.requesterId || existing.requesterId,
+            note: `Penuhi permintaan #${updated.id}`,
+            timestamp: new Date().toISOString(),
+          });
+          return { ...m, stock: newStock };
+        }
+        return m;
+      });
+
+      setData((prevData) => ({ ...prevData, materials: newMaterials }));
+
+      // push transactions
+      setMaterialTransactions((prev) => [
+        ...transactionsToAdd.map((t) => ({ id: Date.now() + Math.random(), ...t })),
+        ...prev,
+      ]);
+    }
+  };
+
   const updateProject = (project) => {
     setData((prev) => ({
       ...prev,
@@ -251,6 +351,42 @@ function App() {
       products: [...prev.products, newProduct],
     }));
     return newProduct;
+  };
+
+  // --- Materials management ---
+  const addMaterial = (material) => {
+    const newMaterial = { ...material, id: Date.now() };
+    setData((prev) => ({ ...prev, materials: [...(prev.materials || []), newMaterial] }));
+    return newMaterial;
+  };
+
+  const updateMaterial = (material) => {
+    setData((prev) => {
+      const prevMat = prev.materials.find((m) => m.id === material.id);
+      const newMaterials = prev.materials.map((m) => (m.id === material.id ? material : m));
+      // If stock changed, record a transaction
+      if (prevMat && prevMat.stock !== material.stock) {
+        const qty = Math.abs(material.stock - prevMat.stock);
+        const tx = {
+          id: Date.now() + Math.random(),
+          materialId: material.id,
+          type: material.stock > prevMat.stock ? "in" : "out",
+          qty,
+          prevStock: prevMat.stock,
+          newStock: material.stock,
+          relatedRequestId: null,
+          userId: currentUser?.id,
+          note: "Manual stock update",
+          timestamp: new Date().toISOString(),
+        };
+        setMaterialTransactions((prevTx) => [tx, ...prevTx]);
+      }
+      return { ...prev, materials: newMaterials };
+    });
+  };
+
+  const deleteMaterial = (materialId) => {
+    setData((prev) => ({ ...prev, materials: prev.materials.filter((m) => m.id !== materialId) }));
   };
 
   // --- RAB / Budget request handlers (customers submit RABs) ---
@@ -335,6 +471,7 @@ function App() {
           <CustomerDashboard
             user={currentUser}
             products={data.products}
+            materials={data.materials}
             orders={data.orders}
             onAddOrder={addOrder}
             rabs={rabs}
@@ -348,13 +485,16 @@ function App() {
             user={currentUser}
             projects={data.projects}
             products={data.products}
+            materials={data.materials}
             onUpdateProject={updateProject}
+            onAddProject={addProject}
             rabs={rabs}
             proposals={proposals}
             onAddProposal={addProposal}
             onUpdateProposal={updateProposal}
             onSendProposal={sendProposal}
             onUpdateRAB={updateRAB}
+            onAddMaterialRequest={addMaterialRequest}
           />
         );
       case "admin":
@@ -362,6 +502,8 @@ function App() {
           <AdminDashboard
             user={currentUser}
             data={data}
+            materialRequests={materialRequests}
+            materialTransactions={materialTransactions}
             onAddUser={addUser}
             onUpdateUser={updateUser}
             onDeleteUser={deleteUser}
@@ -371,6 +513,10 @@ function App() {
             onUpdateOrder={updateOrder}
             onAddProject={addProject}
             onUpdateProject={updateProject}
+            onAddMaterial={addMaterial}
+            onUpdateMaterial={updateMaterial}
+            onDeleteMaterial={deleteMaterial}
+            onUpdateMaterialRequest={updateMaterialRequest}
           />
         );
       default:
