@@ -159,6 +159,31 @@ function App() {
       ...prev,
       orders: [...prev.orders, newOrder],
     }));
+    // Also create a corresponding RAB submission from the order items
+    try {
+      const rabFromOrder = {
+        projectName: order.projectName || order.projectName,
+        location: order.projectLocation || "",
+        area: "",
+        category: "",
+        description: order.projectDescription || "",
+        items: (order.items || []).map((it) => ({
+          name: it.product?.name || it.name || "",
+          type: "Produk",
+          unit: it.product?.unit || "unit",
+          qty: it.quantity || 0,
+          price: it.product?.price || 0,
+        })),
+        totalEstimate: order.total || 0,
+        customerId: order.customerId || (order.customerId === undefined ? (order.customerId) : order.customerId),
+        status: "Menunggu Perhitungan",
+        createdAt: new Date().toISOString(),
+      };
+      addRAB(rabFromOrder);
+    } catch (err) {
+      // non-fatal: if mapping fails, just skip creating RAB
+      console.error("Failed to auto-create RAB from order:", err);
+    }
     return newOrder;
   };
 
@@ -233,8 +258,8 @@ function App() {
     const newRAB = {
       ...rab,
       id: Date.now(),
-      status: "submitted",
-      createdAt: new Date().toISOString(),
+      status: rab.status || "submitted",
+      createdAt: rab.createdAt || new Date().toISOString(),
     };
     setRabs((prev) => [newRAB, ...prev]);
     return newRAB;
@@ -314,6 +339,7 @@ function App() {
             onAddOrder={addOrder}
             rabs={rabs}
             onAddRAB={addRAB}
+            onUpdateRAB={updateRAB}
           />
         );
       case "project_manager":
@@ -328,6 +354,7 @@ function App() {
             onAddProposal={addProposal}
             onUpdateProposal={updateProposal}
             onSendProposal={sendProposal}
+            onUpdateRAB={updateRAB}
           />
         );
       case "admin":

@@ -10,24 +10,19 @@ const CustomerDashboard = ({
   onAddOrder,
   rabs = [],
   onAddRAB,
+  onUpdateRAB,
 }) => {
   const [activeTab, setActiveTab] = useState("catalog");
   // Cart state for quick add-to-order from product catalog
   const [cartItems, setCartItems] = useState([]);
 
-  // Form state for creating RAB (budget) requests
-  const [rabProjectName, setRabProjectName] = useState("");
-  const [rabDescription, setRabDescription] = useState("");
-  const [rabItems, setRabItems] = useState([]);
-  const [itemName, setItemName] = useState("");
-  const [itemQty, setItemQty] = useState(1);
-  const [itemPrice, setItemPrice] = useState(0);
+  // Cart / order related state (RABs are created from orders)
+  // no local RAB form state here; RABs are created automatically from orders
 
   const tabs = [
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
     { id: "order", label: "Buat Pesanan", icon: "📝" },
     { id: "history", label: "Riwayat Pesanan", icon: "📋" },
-    { id: "rab", label: "Ajukan Anggaran", icon: "💼" },
   ];
 
   const renderActiveTab = () => {
@@ -72,214 +67,23 @@ const CustomerDashboard = ({
         );
       case "history":
         return <OrderHistory orders={orders} user={user} />;
-      case "rab":
-        return (
-          <div className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="text-lg font-medium">
-                Form Pengajuan Anggaran (RAB)
-              </h3>
-              <input
-                type="text"
-                className="w-full border rounded-md p-2"
-                placeholder="Nama Proyek"
-                value={rabProjectName}
-                onChange={(e) => setRabProjectName(e.target.value)}
-              />
-              <textarea
-                className="w-full border rounded-md p-2"
-                rows={3}
-                placeholder="Deskripsi singkat proyek / kebutuhan"
-                value={rabDescription}
-                onChange={(e) => setRabDescription(e.target.value)}
-              />
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div>
-                  <label
-                    htmlFor="itemName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Item
-                  </label>
-                  <select
-                    id="itemName"
-                    className="border rounded-md p-2 w-full"
-                    value={itemName}
-                    onChange={(e) => {
-                      const selectedName = e.target.value;
-                      setItemName(selectedName);
-                      // try to find product and autofill price
-                      const prod = products?.find(
-                        (p) => p.name === selectedName
-                      );
-                      setItemPrice(prod ? Number(prod.price || 0) : 0);
-                    }}
-                  >
-                    <option value="">Pilih item dari katalog</option>
-                    {products &&
-                      products.map((p) => (
-                        <option key={p.id} value={p.name}>
-                          {p.name}
-                          {p.price
-                            ? ` - Rp ${Number(p.price).toLocaleString()}`
-                            : ""}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="itemQty"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Kuantitas
-                  </label>
-                  <input
-                    id="itemQty"
-                    type="number"
-                    className="border rounded-md p-2 w-full"
-                    placeholder="Kuantitas"
-                    value={itemQty}
-                    min={1}
-                    onChange={(e) => setItemQty(Number(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="itemPrice"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Harga satuan
-                  </label>
-                  <input
-                    id="itemPrice"
-                    type="number"
-                    className="border rounded-md p-2 w-full"
-                    placeholder="Harga satuan"
-                    value={itemPrice}
-                    min={0}
-                    onChange={(e) => setItemPrice(Number(e.target.value))}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="px-3 py-2 bg-green-600 text-white rounded-md"
-                  onClick={() => {
-                    if (!itemName) return;
-                    setRabItems((prev) => [
-                      ...prev,
-                      { name: itemName, qty: itemQty, price: itemPrice },
-                    ]);
-                    setItemName("");
-                    setItemQty(1);
-                    setItemPrice(0);
-                  }}
-                >
-                  Tambah Item
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="font-medium">Daftar Item</h4>
-              {rabItems.length === 0 ? (
-                <p className="text-gray-500">Belum ada item.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {rabItems.map((it, idx) => (
-                    <li
-                      key={idx}
-                      className="flex justify-between items-center bg-gray-50 border p-2 rounded"
-                    >
-                      <div>
-                        <div className="font-medium">{it.name}</div>
-                        <div className="text-sm text-gray-600">
-                          {it.qty} x Rp {it.price?.toLocaleString()}
-                        </div>
-                      </div>
-                      <div>
-                        <button
-                          className="text-sm text-red-600"
-                          onClick={() =>
-                            setRabItems((prev) =>
-                              prev.filter((_, i) => i !== idx)
-                            )
-                          }
-                        >
-                          Hapus
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 bg-blue-600 text-white rounded-md"
-                onClick={() => {
-                  const total = rabItems.reduce(
-                    (s, it) => s + it.qty * (it.price || 0),
-                    0
-                  );
-                  const payload = {
-                    projectName: rabProjectName,
-                    description: rabDescription,
-                    items: rabItems,
-                    totalEstimate: total,
-                    customerId: user?.id,
-                  };
-                  if (onAddRAB) {
-                    onAddRAB(payload);
-                  }
-                  // clear form
-                  setRabProjectName("");
-                  setRabDescription("");
-                  setRabItems([]);
-                }}
-              >
-                Kirim Pengajuan
-              </button>
-            </div>
-
-            <div className="pt-4">
-              <h4 className="font-medium">Riwayat Pengajuan Anggaran Anda</h4>
-              <div className="space-y-3 mt-3">
-                {rabs.filter((r) => r.customerId === user?.id).length === 0 ? (
-                  <p className="text-gray-500">Belum ada pengajuan.</p>
-                ) : (
-                  rabs
-                    .filter((r) => r.customerId === user?.id)
-                    .map((r) => (
-                      <div key={r.id} className="border rounded p-3 bg-white">
-                        <div className="flex justify-between">
-                          <div className="font-medium">{r.projectName}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(r.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Status: {r.status}
-                        </div>
-                        <div className="mt-2 text-sm">
-                          Total estimasi: Rp{" "}
-                          {Number(r.totalEstimate || 0).toLocaleString()}
-                        </div>
-                      </div>
-                    ))
-                )}
-              </div>
-            </div>
-          </div>
-        );
       default:
         return <ProductCatalog products={products} />;
     }
+  };
+  // negotiation input values per RAB id
+  const [negotiationInputs, setNegotiationInputs] = useState({});
+
+  const submitNegotiation = (rab) => {
+    if (!onUpdateRAB) return;
+    const raw = negotiationInputs[rab.id];
+    if (!raw) return alert("Masukkan nominal tawaran terlebih dahulu");
+    const value = Number(String(raw).replace(/[^0-9]/g, ""));
+    if (isNaN(value) || value <= 0) return alert("Masukkan angka yang valid lebih besar dari 0");
+    const updated = { ...rab, proposedPrice: value, status: "Negosiasi Pelanggan" };
+    onUpdateRAB(updated);
+    // clear input for that rab
+    setNegotiationInputs((prev) => ({ ...prev, [rab.id]: "" }));
   };
 
   return (
@@ -292,6 +96,52 @@ const CustomerDashboard = ({
           <p className="text-gray-600 text-sm sm:text-base">
             Selamat datang, {user?.name}!
           </p>
+          {/* RAB submissions summary (since RABs are created from orders) */}
+          <div className="mt-4">
+            <h3 className="text-lg font-medium">Pengajuan RAB Anda</h3>
+            <div className="mt-3 space-y-3">
+              {rabs.filter((r) => r.customerId === user?.id).length === 0 ? (
+                <p className="text-gray-500">Belum ada pengajuan RAB.</p>
+              ) : (
+                rabs
+                  .filter((r) => r.customerId === user?.id)
+                  .map((r) => (
+                    <div key={r.id} className="border rounded p-3 bg-white">
+                      <div className="flex justify-between">
+                        <div className="font-medium">{r.projectName || 'Unnamed'}</div>
+                        <div className="text-sm text-gray-500">
+                          {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-2">Status: {r.status}</div>
+                      <div className="mt-2 text-sm">Total estimasi: Rp {Number(r.totalEstimate || 0).toLocaleString()}</div>
+                      {r.proposedPrice && (
+                        <div className="mt-2 text-sm text-blue-700">Tawaran Anda: Rp {Number(r.proposedPrice).toLocaleString()}</div>
+                      )}
+                      {r.agreedPrice && (
+                        <div className="mt-2 text-sm text-green-700">Disepakati: Rp {Number(r.agreedPrice).toLocaleString()}</div>
+                      )}
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          className="border rounded p-2 w-40"
+                          placeholder="Tawaran (angka)"
+                          value={negotiationInputs[r.id] || ""}
+                          onChange={(e) => setNegotiationInputs((p) => ({ ...p, [r.id]: e.target.value }))}
+                        />
+                        <button
+                          className="px-3 py-2 bg-yellow-500 text-white rounded"
+                          onClick={() => submitNegotiation(r)}
+                        >
+                          Ajukan Negosiasi
+                        </button>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 mb-6">

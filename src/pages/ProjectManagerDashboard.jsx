@@ -11,6 +11,7 @@ const ProjectManagerDashboard = ({
   onAddProposal,
   onUpdateProposal,
   onSendProposal,
+  onUpdateRAB,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
 
@@ -58,7 +59,10 @@ const ProjectManagerDashboard = ({
                         </div>
                         <div className="text-sm text-gray-500">
                           Diajukan oleh user #{r.customerId} •{" "}
-                          {new Date(r.createdAt).toLocaleString()}
+                          {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-2">
+                          Lokasi: {r.location || "-"} • Luas: {r.area || "-"} • Kategori: {r.category || "-"}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -77,14 +81,82 @@ const ProjectManagerDashboard = ({
                           >
                             Buat Penawaran
                           </button>
+                          {onUpdateRAB && (
+                            <>
+                              <button
+                                className="px-3 py-2 bg-green-600 text-white rounded"
+                                onClick={() => onUpdateRAB({ ...r, status: 'Dalam Perhitungan' })}
+                              >
+                                Teruskan ke Estimator
+                              </button>
+                              <button
+                                className="px-3 py-2 bg-yellow-500 text-white rounded"
+                                onClick={() => onUpdateRAB({ ...r, status: 'Perlu Revisi' })}
+                              >
+                                Tandai Perlu Revisi
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="mt-3">
-                      <div className="text-sm font-medium">
-                        Total estimasi: Rp{" "}
-                        {Number(r.totalEstimate || 0).toLocaleString()}
-                      </div>
+                      <div className="text-sm font-medium">Total estimasi: Rp {Number(r.totalEstimate || 0).toLocaleString()}</div>
+                      {r.proposedPrice && (
+                        <div className="mt-2 text-sm text-blue-700">Tawaran pelanggan: Rp {Number(r.proposedPrice).toLocaleString()}</div>
+                      )}
+                      {r.agreedPrice && (
+                        <div className="mt-2 text-sm text-green-700">Harga disepakati: Rp {Number(r.agreedPrice).toLocaleString()}</div>
+                      )}
+                      {r.proposedPrice && onUpdateRAB && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            className="px-3 py-2 bg-green-600 text-white rounded"
+                            onClick={() => onUpdateRAB({ ...r, status: 'Disetujui', agreedPrice: r.proposedPrice })}
+                          >
+                            Setujui & Buat Kontrak
+                          </button>
+                          <button
+                            className="px-3 py-2 bg-red-500 text-white rounded"
+                            onClick={() => onUpdateRAB({ ...r, status: 'Perlu Revisi' })}
+                          >
+                            Tolak / Minta Revisi
+                          </button>
+                        </div>
+                      )}
+                      {/* itemized table */}
+                      {r.items && r.items.length > 0 && (
+                        <div className="mt-2 overflow-x-auto">
+                          <table className="w-full text-sm border-collapse">
+                            <thead>
+                              <tr className="text-left border-b">
+                                <th className="py-2">Item</th>
+                                <th className="py-2">Jenis</th>
+                                <th className="py-2">Jumlah</th>
+                                <th className="py-2">Satuan</th>
+                                <th className="py-2">Harga Satuan</th>
+                                <th className="py-2">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.items.map((it, idx) => (
+                                <tr key={idx} className="border-b">
+                                  <td className="py-2">{it.name}</td>
+                                  <td className="py-2">{it.type || 'Produk'}</td>
+                                  <td className="py-2">{it.qty} </td>
+                                  <td className="py-2">{it.unit || '-'}</td>
+                                  <td className="py-2">Rp {Number(it.price || 0).toLocaleString()}</td>
+                                  <td className="py-2">Rp {Number((it.qty || 0) * (it.price || 0)).toLocaleString()}</td>
+                                </tr>
+                              ))}
+                              <tr>
+                                <td colSpan={5} className="py-2 font-medium text-right">Total Biaya RAB</td>
+                                <td className="py-2 font-medium">Rp {Number(r.totalEstimate || 0).toLocaleString()}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
