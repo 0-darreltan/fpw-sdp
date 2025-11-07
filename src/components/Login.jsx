@@ -29,7 +29,7 @@ const Login = ({ onLogin }) => {
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <img
-            src="/public/Gambar/LogoAgungBetonKendari.jpeg"
+            src="/Gambar/LogoAgungBetonKendari.jpeg"
             alt="Agung Beton"
             className="w-16 h-16 mx-auto mb-4 object-contain"
           />
