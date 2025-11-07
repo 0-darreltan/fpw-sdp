@@ -160,4 +160,4 @@ module.exports = {
   updateUser,
   deleteUser,
   acceptProposal,
-}
+};

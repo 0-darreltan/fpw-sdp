@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
 
 const Login = ({ onLogin }) => {
   const [credentials, setCredentials] = useState({
@@ -24,6 +25,15 @@ const Login = ({ onLogin }) => {
     });
   };
 
+  //   const {
+  //   register,
+  //   control,
+  //   handleSubmit,
+  //   formState: { errors },
+  // } = useForm({
+  //   resolver: joiResolver(formValidationSchema);
+  // });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-800 via-black/30 to-red-600 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
@@ -43,7 +53,7 @@ const Login = ({ onLogin }) => {
           <div>
             <label
               htmlFor="username"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-xl font-medium text-gray-700 mb-1"
             >
               Username:
             </label>
@@ -60,10 +70,7 @@ const Login = ({ onLogin }) => {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+            <label className="block text-xl font-medium text-gray-700 mb-1">
               Password:
             </label>
             <input
@@ -88,11 +95,11 @@ const Login = ({ onLogin }) => {
             type="submit"
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md font-medium transition-colors duration-200"
           >
-            Masuk
+            Login
           </button>
         </form>
 
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+        {/* <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-semibold text-gray-800 mb-3">Demo Accounts:</h4>
           <div className="space-y-2 text-sm">
             <div className="text-gray-700">
@@ -105,7 +112,7 @@ const Login = ({ onLogin }) => {
               <strong>Project Manager:</strong> pm1 / pm123
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );
