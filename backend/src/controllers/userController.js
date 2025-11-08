@@ -30,7 +30,9 @@ const LoginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: username });
+    console.log(user);
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -69,13 +71,33 @@ const RegisterUser = async (req, res) => {
     if (existingUser)
       return res.status(409).json({ message: "User already exists" });
 
-    const user = new User({ username, password, role, name, email, phone });
+    // hash password with bcryptjs before saving
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({
+      username,
+      password: hashed,
+      role,
+      name,
+      email,
+      phone,
+    });
     await user.save();
+
+    // return user data without password
+    const userSafe = {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      phone: user.phone,
+    };
 
     res
       .status(201)
-      .json({ message: "User registered successfully", user: user });
+      .json({ message: "User registered successfully", user: userSafe });
   } catch (error) {
+    console.error("RegisterUser error:", error);
     res.status(500).json({ message: "Internal Server Error: " + error });
   }
 };

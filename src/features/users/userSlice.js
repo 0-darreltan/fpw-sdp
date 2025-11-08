@@ -26,17 +26,25 @@ const deleteUser = createAsyncThunk("users/deleteUser", async (id) => {
   return response.data;
 });
 
-const LoginUser = createAsyncThunk("users/LoginUser", async (data) => {
-  const response = await api.post("/login", data);
-  return response.data;
-});
+const LoginUser = createAsyncThunk(
+  "users/LoginUser",
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await api.post("/users/login", data);
+      return response.data;
+    } catch (err) {
+      // kembalikan message dari server atau err.message untuk debugging
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
 
 const LogOutUser = createAsyncThunk("users/LogOutUser", async () => {
-  await api.post("/logout");
+  await api.post("users/logout");
 });
 
 const RegisterUser = createAsyncThunk("users/RegisterUser", async (data) => {
-  const response = await api.post("/register", data);
+  const response = await api.post("users/register", data);
   return response.data;
 });
 

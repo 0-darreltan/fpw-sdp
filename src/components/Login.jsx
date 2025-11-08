@@ -1,38 +1,28 @@
-import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { loginValidationSchema } from "../utils/validation/loginValidation";
+import { joiResolver } from "@hookform/resolvers/joi";
+import { useDispatch } from "react-redux";
+import { actionUser } from "../features/users/userSlice";
 
-const Login = ({ onLogin }) => {
-  const [credentials, setCredentials] = useState({
-    username: "",
-    password: "",
+const Login = () => {
+  const dispatch = useDispatch();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: joiResolver(loginValidationSchema),
   });
-  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError("");
-
-    const result = onLogin(credentials.username, credentials.password);
-    if (!result.success) {
-      setError(result.error);
+  const handleLogin = async (data) => {
+    try {
+      await dispatch(actionUser.LoginUser(data)).unwrap();
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert(error?.message || "Login gagal, cek kredensial.");
     }
   };
-
-  const handleInputChange = (e) => {
-    setCredentials({
-      ...credentials,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  //   const {
-  //   register,
-  //   control,
-  //   handleSubmit,
-  //   formState: { errors },
-  // } = useForm({
-  //   resolver: joiResolver(formValidationSchema);
-  // });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-800 via-black/30 to-red-600 flex items-center justify-center p-4">
@@ -49,7 +39,7 @@ const Login = ({ onLogin }) => {
           <p className="text-gray-600">Sistem Manajemen Proyek</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
           <div>
             <label
               htmlFor="username"
@@ -59,14 +49,32 @@ const Login = ({ onLogin }) => {
             </label>
             <input
               type="text"
-              id="username"
-              name="username"
-              value={credentials.username}
-              onChange={handleInputChange}
-              required
+              {...register("username")}
               placeholder="Masukkan username"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-all ${
+                errors.username
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500 focus:border-transparent"
+              }`}
             />
+            {errors.username && (
+              <div className="mt-2 flex items-start gap-2 bg-red-50 p-3 rounded-md border border-red-200">
+                <svg
+                  className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="text-sm text-red-700 font-medium">
+                  {errors.username.message}
+                </p>
+              </div>
+            )}
           </div>
 
           <div>
@@ -75,21 +83,33 @@ const Login = ({ onLogin }) => {
             </label>
             <input
               type="password"
-              id="password"
-              name="password"
-              value={credentials.password}
-              onChange={handleInputChange}
-              required
+              {...register("password")}
               placeholder="Masukkan password"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 transition-all ${
+                errors.password
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500 focus:border-transparent"
+              }`}
             />
+            {errors.password && (
+              <div className="mt-2 flex items-start gap-2 bg-red-50 p-3 rounded-md border border-red-200">
+                <svg
+                  className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="text-sm text-red-700 font-medium">
+                  {errors.password.message}
+                </p>
+              </div>
+            )}
           </div>
-
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
 
           <button
             type="submit"
