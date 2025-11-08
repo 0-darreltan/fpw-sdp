@@ -39,7 +39,7 @@ router.post("/register", RegisterUser);
 router.post("/logout", LogOutUser);
 
 // ✅ Protected routes (butuh token)
-router.get("/", authMiddleware, cekAdmin, getUser); // hanya Admin yang boleh lihat semua user
+router.get("/", getUser); // hanya Admin yang boleh lihat semua user
 router.get("/:id", authMiddleware, getUserById); // semua user login bisa lihat profil sendiri
 
 // 🔧 Create user (hanya Admin)

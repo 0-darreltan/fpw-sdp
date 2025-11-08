@@ -6,6 +6,7 @@ const { MONGO_URI, MONGO_DB, NODE_ENV, CREATE_COLLECTIONS } = process.env;
 
 // Build a sensible default URI if MONGO_URI is not provided
 const defaultDbName = process.env.DATABASE_NAME || "fpw-sdp";
+
 const uri =
   MONGO_URI && MONGO_URI.length > 0
     ? MONGO_URI
