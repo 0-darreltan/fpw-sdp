@@ -1,12 +1,13 @@
 import { useForm } from "react-hook-form";
-import { loginValidationSchema } from "../utils/validation/loginValidation";
+import { loginValidationSchema } from "../../utils/validation/loginValidation";
 import { joiResolver } from "@hookform/resolvers/joi";
 import { useDispatch } from "react-redux";
-import { actionUser } from "../features/users/userSlice";
+import { actionUser } from "../../features/users/userSlice";
+import { useNavigate } from "react-router";
 
 const Login = () => {
   const dispatch = useDispatch();
-
+  const navigate = useNavigate();
   const {
     register,
     handleSubmit,
@@ -17,7 +18,12 @@ const Login = () => {
 
   const handleLogin = async (data) => {
     try {
+      console.log(data);
+
       await dispatch(actionUser.LoginUser(data)).unwrap();
+      navigate("/customer");
+
+      alert("login Berhasil");
     } catch (error) {
       console.error("Login failed:", error);
       alert(error?.message || "Login gagal, cek kredensial.");

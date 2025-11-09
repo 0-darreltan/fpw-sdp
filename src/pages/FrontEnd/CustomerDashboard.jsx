@@ -1,24 +1,20 @@
 import React, { useState } from "react";
-import OrderForm from "../components/OrderForm";
-import OrderHistory from "../components/OrderHistory";
-import ProductCatalog from "../components/ProductCatalog";
-import MaterialCatalog from "../components/MaterialCatalog";
+import OrderForm from "../../components/orders/OrderForm";
+import OrderHistory from "../../components/orders/OrderHistory";
+import ProductCatalog from "../../components/products/ProductCatalog";
+import MaterialCatalog from "../../components/materials/MaterialCatalog";
 
 const CustomerDashboard = ({
   user,
-  products,
-  materials = [],
+  products: propsProducts,
+  materials: propsMaterials = [],
   orders,
   onAddOrder,
-  rabs = [],
   onUpdateRAB,
 }) => {
   const [activeTab, setActiveTab] = useState("catalog");
-  // Cart state for quick add-to-order from product catalog
   const [cartItems, setCartItems] = useState([]);
-
-  // Cart / order related state (RABs are created from orders)
-  // no local RAB form state here; RABs are created automatically from orders
+  const [negotiationInputs, setNegotiationInputs] = useState({});
 
   const tabs = [
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
@@ -27,46 +23,52 @@ const CustomerDashboard = ({
     { id: "history", label: "Riwayat Pesanan", icon: "📋" },
   ];
 
+  const handleAddFromCatalog = (product) => {
+    const id = product.id ?? product._id;
+    setCartItems((prev) => {
+      const existing = prev.find((p) => p.productId === id);
+      if (existing) {
+        return prev.map((p) =>
+          p.productId === id ? { ...p, quantity: p.quantity + 1 } : p
+        );
+      }
+      return [
+        ...prev,
+        { productId: id, quantity: 1, id: Date.now(), meta: product },
+      ];
+    });
+    setActiveTab("order");
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "catalog":
         return (
           <ProductCatalog
-            products={products}
-            materials={materials}
-            onAddToCart={(product) => {
-              // add or increment
+            products={propsProducts}
+            materials={propsMaterials}
+            onAddToCart={handleAddFromCatalog}
+          />
+        );
+      case "materials":
+        return (
+          <MaterialCatalog
+            materials={propsMaterials}
+            onAddToCart={(it) => {
+              // when adding from material catalog we receive object {id, isMaterial:true}
               setCartItems((prev) => {
-                const existing = prev.find((p) => p.productId === product.id);
+                const existing = prev.find((p) => p.productId === it.id);
                 if (existing) {
                   return prev.map((p) =>
-                    p.productId === product.id
+                    p.productId === it.id
                       ? { ...p, quantity: p.quantity + 1 }
                       : p
                   );
                 }
                 return [
                   ...prev,
-                  { productId: product.id, quantity: 1, id: Date.now() },
+                  { productId: it.id, quantity: 1, id: Date.now() },
                 ];
-              });
-              // open order tab for checkout
-              setActiveTab("order");
-            }}
-          />
-        );
-      case "materials":
-        return (
-          <MaterialCatalog
-            materials={materials}
-            onAddToCart={(it) => {
-              // when adding from material catalog we receive object {id, isMaterial:true}
-              setCartItems((prev) => {
-                const existing = prev.find((p) => p.productId === it.id);
-                if (existing) {
-                  return prev.map((p) => (p.productId === it.id ? { ...p, quantity: p.quantity + 1 } : p));
-                }
-                return [...prev, { productId: it.id, quantity: 1, id: Date.now() }];
               });
               setActiveTab("order");
             }}
@@ -76,8 +78,8 @@ const CustomerDashboard = ({
       case "order":
         return (
           <OrderForm
-            products={products}
-            materials={materials}
+            products={propsProducts}
+            materials={propsMaterials}
             user={user}
             onAddOrder={(order) => {
               // call parent handler and clear cart
@@ -90,11 +92,11 @@ const CustomerDashboard = ({
       case "history":
         return <OrderHistory orders={orders} user={user} />;
       default:
-        return <ProductCatalog products={products} />;
+        return <ProductCatalog products={propsProducts} />;
     }
   };
   // negotiation input values per RAB id
-  const [negotiationInputs, setNegotiationInputs] = useState({});
+  // const [negotiationInputs, setNegotiationInputs] = useState({});
 
   const formatCurrency = (value) => {
     if (!value && value !== 0) return "Rp 0";
@@ -107,27 +109,62 @@ const CustomerDashboard = ({
 
   const getOrderStatusBadge = (status) => {
     const cfg = {
-      pending: { label: "Menunggu Review", class: "bg-yellow-100 text-yellow-800" },
-      reviewed: { label: "Sedang Ditinjau", class: "bg-blue-100 text-blue-800" },
+      pending: {
+        label: "Menunggu Review",
+        class: "bg-yellow-100 text-yellow-800",
+      },
+      reviewed: {
+        label: "Sedang Ditinjau",
+        class: "bg-blue-100 text-blue-800",
+      },
       approved: { label: "Disetujui", class: "bg-green-100 text-green-800" },
-      in_progress: { label: "Dalam Pengerjaan", class: "bg-purple-100 text-purple-800" },
+      in_progress: {
+        label: "Dalam Pengerjaan",
+        class: "bg-purple-100 text-purple-800",
+      },
       completed: { label: "Selesai", class: "bg-emerald-100 text-emerald-800" },
       cancelled: { label: "Dibatalkan", class: "bg-red-100 text-red-800" },
     };
-    const c = cfg[status] || { label: status || "-", class: "bg-gray-100 text-gray-800" };
-    return <span className={`px-3 py-1 rounded-full text-xs font-medium ${c.class}`}>{c.label}</span>;
+    const c = cfg[status] || {
+      label: status || "-",
+      class: "bg-gray-100 text-gray-800",
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${c.class}`}>
+        {c.label}
+      </span>
+    );
   };
 
   const getRABStatusBadge = (status) => {
     const cfg = {
-      "Menunggu Perhitungan": { label: "Menunggu Perhitungan", class: "bg-yellow-100 text-yellow-800" },
-      "Dalam Perhitungan": { label: "Dalam Perhitungan", class: "bg-blue-100 text-blue-800" },
-      "Perlu Revisi": { label: "Perlu Revisi", class: "bg-red-100 text-red-800" },
-      "Negosiasi Pelanggan": { label: "Negosiasi", class: "bg-purple-100 text-purple-800" },
-      "Disetujui": { label: "Disetujui", class: "bg-green-100 text-green-800" },
+      "Menunggu Perhitungan": {
+        label: "Menunggu Perhitungan",
+        class: "bg-yellow-100 text-yellow-800",
+      },
+      "Dalam Perhitungan": {
+        label: "Dalam Perhitungan",
+        class: "bg-blue-100 text-blue-800",
+      },
+      "Perlu Revisi": {
+        label: "Perlu Revisi",
+        class: "bg-red-100 text-red-800",
+      },
+      "Negosiasi Pelanggan": {
+        label: "Negosiasi",
+        class: "bg-purple-100 text-purple-800",
+      },
+      Disetujui: { label: "Disetujui", class: "bg-green-100 text-green-800" },
     };
-    const c = cfg[status] || { label: status || "-", class: "bg-gray-100 text-gray-800" };
-    return <span className={`px-3 py-1 rounded-full text-xs font-medium ${c.class}`}>{c.label}</span>;
+    const c = cfg[status] || {
+      label: status || "-",
+      class: "bg-gray-100 text-gray-800",
+    };
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${c.class}`}>
+        {c.label}
+      </span>
+    );
   };
 
   const submitNegotiation = (rab) => {
@@ -135,8 +172,13 @@ const CustomerDashboard = ({
     const raw = negotiationInputs[rab.id];
     if (!raw) return alert("Masukkan nominal tawaran terlebih dahulu");
     const value = Number(String(raw).replace(/[^0-9]/g, ""));
-    if (isNaN(value) || value <= 0) return alert("Masukkan angka yang valid lebih besar dari 0");
-    const updated = { ...rab, proposedPrice: value, status: "Negosiasi Pelanggan" };
+    if (isNaN(value) || value <= 0)
+      return alert("Masukkan angka yang valid lebih besar dari 0");
+    const updated = {
+      ...rab,
+      proposedPrice: value,
+      status: "Negosiasi Pelanggan",
+    };
     onUpdateRAB(updated);
     // clear input for that rab
     setNegotiationInputs((prev) => ({ ...prev, [rab.id]: "" }));
@@ -156,7 +198,7 @@ const CustomerDashboard = ({
           <div className="mt-4">
             <h3 className="text-lg font-medium">Pengajuan RAB Anda</h3>
             <div className="mt-3 space-y-3">
-              {rabs.filter((r) => r.customerId === user?.id).length === 0 ? (
+              {/* {rabs.filter((r) => r.customerId === user?.id).length === 0 ? (
                 <p className="text-gray-500">Belum ada pengajuan RAB.</p>
               ) : (
                 rabs
@@ -164,18 +206,33 @@ const CustomerDashboard = ({
                   .map((r) => (
                     <div key={r.id} className="border rounded p-3 bg-white">
                       <div className="flex justify-between">
-                        <div className="font-medium">{r.projectName || 'Unnamed'}</div>
+                        <div className="font-medium">
+                          {r.projectName || "Unnamed"}
+                        </div>
                         <div className="text-sm text-gray-500">
-                          {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                          {r.createdAt
+                            ? new Date(r.createdAt).toLocaleString()
+                            : "-"}
                         </div>
                       </div>
-                      <div className="text-sm text-gray-600 mt-2">Status: {getRABStatusBadge(r.status)}</div>
-                      <div className="mt-2 text-sm">Total estimasi: Rp {formatCurrency(r.totalEstimate || 0)}</div>
+                      <div className="text-sm text-gray-600 mt-2">
+                        Status: {getRABStatusBadge(r.status)}
+                      </div>
+                      <div className="mt-2 text-sm">
+                        Total estimasi: Rp{" "}
+                        {formatCurrency(r.totalEstimate || 0)}
+                      </div>
                       {r.proposedPrice && (
-                        <div className="mt-2 text-sm text-blue-700">Tawaran Anda: Rp {Number(r.proposedPrice).toLocaleString()}</div>
+                        <div className="mt-2 text-sm text-blue-700">
+                          Tawaran Anda: Rp{" "}
+                          {Number(r.proposedPrice).toLocaleString()}
+                        </div>
                       )}
                       {r.agreedPrice && (
-                        <div className="mt-2 text-sm text-green-700">Disepakati: Rp {Number(r.agreedPrice).toLocaleString()}</div>
+                        <div className="mt-2 text-sm text-green-700">
+                          Disepakati: Rp{" "}
+                          {Number(r.agreedPrice).toLocaleString()}
+                        </div>
                       )}
                       <div className="mt-3 flex items-center gap-2">
                         <input
@@ -184,7 +241,12 @@ const CustomerDashboard = ({
                           className="border rounded p-2 w-40"
                           placeholder="Tawaran (angka)"
                           value={negotiationInputs[r.id] || ""}
-                          onChange={(e) => setNegotiationInputs((p) => ({ ...p, [r.id]: e.target.value }))}
+                          onChange={(e) =>
+                            setNegotiationInputs((p) => ({
+                              ...p,
+                              [r.id]: e.target.value,
+                            }))
+                          }
                         />
                         <button
                           className="px-3 py-2 bg-yellow-500 text-white rounded"
@@ -195,7 +257,7 @@ const CustomerDashboard = ({
                       </div>
                     </div>
                   ))
-              )}
+              )} */}
             </div>
           </div>
 
@@ -203,7 +265,8 @@ const CustomerDashboard = ({
           <div className="mt-6">
             <h3 className="text-lg font-medium">Ringkasan Pesanan Terbaru</h3>
             <div className="mt-3 space-y-3">
-              {orders && orders.filter((o) => o.customerId === user?.id).length === 0 ? (
+              {/* {orders &&
+              orders.filter((o) => o.customerId === user?.id).length === 0 ? (
                 <p className="text-gray-500">Belum ada pesanan.</p>
               ) : (
                 orders
@@ -211,18 +274,27 @@ const CustomerDashboard = ({
                   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
                   .slice(0, 3)
                   .map((o) => (
-                    <div key={o.id} className="border rounded p-3 bg-white flex justify-between items-center">
+                    <div
+                      key={o.id}
+                      className="border rounded p-3 bg-white flex justify-between items-center"
+                    >
                       <div>
                         <div className="font-medium">{o.projectName}</div>
-                        <div className="text-sm text-gray-500">{o.createdAt ? new Date(o.createdAt).toLocaleString() : '-'}</div>
-                        <div className="text-sm text-gray-700 mt-1">Total: Rp {formatCurrency(o.total || 0)}</div>
+                        <div className="text-sm text-gray-500">
+                          {o.createdAt
+                            ? new Date(o.createdAt).toLocaleString()
+                            : "-"}
+                        </div>
+                        <div className="text-sm text-gray-700 mt-1">
+                          Total: Rp {formatCurrency(o.total || 0)}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div>{getOrderStatusBadge(o.status)}</div>
                         <div className="flex gap-2">
                           <button
                             className="px-3 py-1 bg-blue-600 text-white rounded"
-                            onClick={() => setActiveTab('history')}
+                            onClick={() => setActiveTab("history")}
                           >
                             Lihat Pesanan
                           </button>
@@ -230,9 +302,14 @@ const CustomerDashboard = ({
                       </div>
                     </div>
                   ))
-              )}
+              )} */}
               <div className="mt-2">
-                <button className="px-3 py-2 bg-gray-100 rounded text-sm" onClick={() => setActiveTab('history')}>Lihat semua riwayat pesanan</button>
+                <button
+                  className="px-3 py-2 bg-gray-100 rounded text-sm"
+                  onClick={() => setActiveTab("history")}
+                >
+                  Lihat semua riwayat pesanan
+                </button>
               </div>
             </div>
           </div>

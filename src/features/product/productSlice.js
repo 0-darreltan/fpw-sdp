@@ -3,7 +3,8 @@ import api from "../api";
 
 const fetchProduct = createAsyncThunk("product/fetch", async () => {
   const response = await api.get(`/products`);
-  return response.data;
+  console.log("🔍 API Response:", response.data.data);
+  return response.data.data;
 });
 
 const fetchProductById = createAsyncThunk("product/fetchById", async (id) => {
@@ -53,7 +54,7 @@ const productSlice = createSlice({
       })
       .addCase(fetchProduct.fulfilled, (state, action) => {
         state.loading = false;
-        state.listProducts = action.payload;
+        state.listProducts = action.payload?.data ?? [];
       })
       .addCase(fetchProduct.rejected, (state, action) => {
         state.loading = false;

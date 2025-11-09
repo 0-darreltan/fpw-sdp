@@ -29,9 +29,7 @@ const getUserById = async (req, res) => {
 const LoginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    const user = await User.findOne({ username: username });
-    console.log(user);
+    const user = await User.findOne({ username });
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -39,16 +37,23 @@ const LoginUser = async (req, res) => {
     if (!isMatch)
       return res.status(401).json({ message: "Invalid credentials" });
 
-    // Buat token
     const token = jwt.sign(
       { _id: user._id, role: user.role, username: user.username },
       process.env.JWT_KEY,
       { expiresIn: "2h" }
     );
 
+    // ✅ Kirim token di response body DAN cookie (double protection)
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 2 * 60 * 60 * 1000,
+    });
+
     res.status(200).json({
       message: "Login successful",
-      token,
+      token, // ✅ kirim token di body
       user: {
         id: user._id,
         username: user.username,
@@ -62,7 +67,6 @@ const LoginUser = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error: " + error });
   }
 };
-
 // ✅ REGISTER user baru
 const RegisterUser = async (req, res) => {
   try {

@@ -27,26 +27,48 @@ const deleteUser = createAsyncThunk("users/deleteUser", async (id) => {
 });
 
 const LoginUser = createAsyncThunk(
-  "users/LoginUser",
-  async (data, { rejectWithValue }) => {
+  "users/login",
+  async ({ username, password }, { rejectWithValue }) => {
     try {
-      const response = await api.post("/users/login", data);
-      return response.data;
+      const res = await api.post("/users/login", { username, password });
+      const { token, user } = res.data;
+
+      // ✅ simpan token & set axios header
+      sessionStorage.setItem("token", token);
+      sessionStorage.setItem("user", JSON.stringify(user));
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      return { token, user };
     } catch (err) {
-      // kembalikan message dari server atau err.message untuk debugging
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
 
 const LogOutUser = createAsyncThunk("users/LogOutUser", async () => {
-  await api.post("users/logout");
+  await api.post("/users/logout");
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("user");
+  delete api.defaults.headers.common["Authorization"];
+  return null;
 });
 
-const RegisterUser = createAsyncThunk("users/RegisterUser", async (data) => {
-  const response = await api.post("users/register", data);
-  return response.data;
-});
+const RegisterUser = createAsyncThunk(
+  "users/RegisterUser",
+  async (data, { rejectWithValue }) => {
+    try {
+      // ✅ tambahkan default role jika tidak ada
+      const payload = {
+        ...data,
+        role: data.role || "Customer", // default role Customer
+      };
+      const response = await api.post("/users/register", payload);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
 
 const initialState = {
   currUsers: null,

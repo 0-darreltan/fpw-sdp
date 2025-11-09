@@ -1,21 +1,20 @@
-import React, { useState } from 'react';
-import ProjectList from "../components/ProjectList";
-import MaterialRequest from "../components/MaterialRequest";
+import React, { useState } from "react";
+import MaterialRequest from "../../components/materials/MaterialRequest";
 
 const ProjectManagerDashboard = ({
   user,
   projects,
   products,
-  materials = [],
-  rabs = [],
-  proposals = [],
-  onAddProposal,
-  onUpdateProposal,
-  onSendProposal,
-  onUpdateRAB,
-  onAddProject,
-  onUpdateProject,
-  onAddMaterialRequest,
+  // materials = [],
+  // rabs = [],
+  // proposals = [],
+  // onAddProposal,
+  // onUpdateProposal,
+  // onSendProposal,
+  // onUpdateRAB,
+  // onAddProject,
+  // onUpdateProject,
+  // onAddMaterialRequest,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
 
@@ -53,45 +52,68 @@ const ProjectManagerDashboard = ({
           <div>
             {editingProject !== null && (
               <div className="bg-white rounded-lg shadow p-4 mb-6">
-                <h4 className="text-lg font-medium mb-3">{editingProject?.id ? 'Edit Proyek' : 'Tambah Proyek'}</h4>
+                <h4 className="text-lg font-medium mb-3">
+                  {editingProject?.id ? "Edit Proyek" : "Tambah Proyek"}
+                </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     className="border rounded p-2"
                     placeholder="Nama proyek"
                     value={projectForm.name}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, name: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({ ...p, name: e.target.value }))
+                    }
                   />
                   <input
                     className="border rounded p-2"
                     placeholder="Lokasi"
                     value={projectForm.location}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, location: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({
+                        ...p,
+                        location: e.target.value,
+                      }))
+                    }
                   />
                   <textarea
                     className="border rounded p-2 col-span-1 sm:col-span-2"
                     rows={3}
                     placeholder="Deskripsi"
                     value={projectForm.description}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, description: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({
+                        ...p,
+                        description: e.target.value,
+                      }))
+                    }
                   />
                   <input
                     type="date"
                     className="border rounded p-2"
                     value={projectForm.startDate}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, startDate: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({
+                        ...p,
+                        startDate: e.target.value,
+                      }))
+                    }
                   />
                   <input
                     type="date"
                     className="border rounded p-2"
                     value={projectForm.endDate}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, endDate: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({ ...p, endDate: e.target.value }))
+                    }
                   />
                   <input
                     type="number"
                     className="border rounded p-2"
                     placeholder="Budget"
                     value={projectForm.budget}
-                    onChange={(e) => setProjectForm((p) => ({ ...p, budget: e.target.value }))}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({ ...p, budget: e.target.value }))
+                    }
                   />
                 </div>
                 <div className="mt-3 flex gap-2">
@@ -104,12 +126,22 @@ const ProjectManagerDashboard = ({
                       };
                       if (editingProject?.id) {
                         // existing project update
-                        if (onUpdateProject) onUpdateProject({ ...editingProject, ...payload });
+                        if (onUpdateProject)
+                          onUpdateProject({ ...editingProject, ...payload });
                       } else {
                         if (onAddProject) onAddProject(payload);
                       }
                       setEditingProject(null);
-                      setProjectForm({ name: "", location: "", description: "", projectManagerId: user?.id, status: "planning", startDate: "", endDate: "", budget: "" });
+                      setProjectForm({
+                        name: "",
+                        location: "",
+                        description: "",
+                        projectManagerId: user?.id,
+                        status: "planning",
+                        startDate: "",
+                        endDate: "",
+                        budget: "",
+                      });
                     }}
                   >
                     Simpan
@@ -134,18 +166,34 @@ const ProjectManagerDashboard = ({
                 Tambah Proyek
               </button>
             </div>
-            <ProjectList projects={projects} user={user} onEditProject={(p) => { setEditingProject(p || {}); setProjectForm({ name: p?.name || "", location: p?.location || "", description: p?.description || "", projectManagerId: p?.projectManagerId || user?.id, status: p?.status || "planning", startDate: p?.startDate || "", endDate: p?.endDate || "", budget: p?.budget || "" }); }} />
+            <ProjectList
+              projects={projects}
+              user={user}
+              onEditProject={(p) => {
+                setEditingProject(p || {});
+                setProjectForm({
+                  name: p?.name || "",
+                  location: p?.location || "",
+                  description: p?.description || "",
+                  projectManagerId: p?.projectManagerId || user?.id,
+                  status: p?.status || "planning",
+                  startDate: p?.startDate || "",
+                  endDate: p?.endDate || "",
+                  budget: p?.budget || "",
+                });
+              }}
+            />
           </div>
         );
       case "materials":
         return (
-            <MaterialRequest
-              products={products}
-              materials={materials}
-              user={user}
-              projects={projects}
-              onAddMaterialRequest={onAddMaterialRequest}
-            />
+          <MaterialRequest
+            products={products}
+            materials={materials}
+            user={user}
+            projects={projects}
+            onAddMaterialRequest={onAddMaterialRequest}
+          />
         );
       case "rabs":
         return (
@@ -165,10 +213,13 @@ const ProjectManagerDashboard = ({
                         </div>
                         <div className="text-sm text-gray-500">
                           Diajukan oleh user #{r.customerId} •{" "}
-                          {r.createdAt ? new Date(r.createdAt).toLocaleString() : "-"}
+                          {r.createdAt
+                            ? new Date(r.createdAt).toLocaleString()
+                            : "-"}
                         </div>
                         <div className="text-sm text-gray-600 mt-2">
-                          Lokasi: {r.location || "-"} • Luas: {r.area || "-"} • Kategori: {r.category || "-"}
+                          Lokasi: {r.location || "-"} • Luas: {r.area || "-"} •
+                          Kategori: {r.category || "-"}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -191,13 +242,20 @@ const ProjectManagerDashboard = ({
                             <>
                               <button
                                 className="px-3 py-2 bg-green-600 text-white rounded"
-                                onClick={() => onUpdateRAB({ ...r, status: 'Dalam Perhitungan' })}
+                                onClick={() =>
+                                  onUpdateRAB({
+                                    ...r,
+                                    status: "Dalam Perhitungan",
+                                  })
+                                }
                               >
                                 Teruskan ke Estimator
                               </button>
                               <button
                                 className="px-3 py-2 bg-yellow-500 text-white rounded"
-                                onClick={() => onUpdateRAB({ ...r, status: 'Perlu Revisi' })}
+                                onClick={() =>
+                                  onUpdateRAB({ ...r, status: "Perlu Revisi" })
+                                }
                               >
                                 Tandai Perlu Revisi
                               </button>
@@ -207,24 +265,41 @@ const ProjectManagerDashboard = ({
                       </div>
                     </div>
                     <div className="mt-3">
-                      <div className="text-sm font-medium">Total estimasi: Rp {Number(r.totalEstimate || 0).toLocaleString()}</div>
+                      <div className="text-sm font-medium">
+                        Total estimasi: Rp{" "}
+                        {Number(r.totalEstimate || 0).toLocaleString()}
+                      </div>
                       {r.proposedPrice && (
-                        <div className="mt-2 text-sm text-blue-700">Tawaran pelanggan: Rp {Number(r.proposedPrice).toLocaleString()}</div>
+                        <div className="mt-2 text-sm text-blue-700">
+                          Tawaran pelanggan: Rp{" "}
+                          {Number(r.proposedPrice).toLocaleString()}
+                        </div>
                       )}
                       {r.agreedPrice && (
-                        <div className="mt-2 text-sm text-green-700">Harga disepakati: Rp {Number(r.agreedPrice).toLocaleString()}</div>
+                        <div className="mt-2 text-sm text-green-700">
+                          Harga disepakati: Rp{" "}
+                          {Number(r.agreedPrice).toLocaleString()}
+                        </div>
                       )}
                       {r.proposedPrice && onUpdateRAB && (
                         <div className="mt-3 flex gap-2">
                           <button
                             className="px-3 py-2 bg-green-600 text-white rounded"
-                            onClick={() => onUpdateRAB({ ...r, status: 'Disetujui', agreedPrice: r.proposedPrice })}
+                            onClick={() =>
+                              onUpdateRAB({
+                                ...r,
+                                status: "Disetujui",
+                                agreedPrice: r.proposedPrice,
+                              })
+                            }
                           >
                             Setujui & Buat Kontrak
                           </button>
                           <button
                             className="px-3 py-2 bg-red-500 text-white rounded"
-                            onClick={() => onUpdateRAB({ ...r, status: 'Perlu Revisi' })}
+                            onClick={() =>
+                              onUpdateRAB({ ...r, status: "Perlu Revisi" })
+                            }
                           >
                             Tolak / Minta Revisi
                           </button>
@@ -248,16 +323,35 @@ const ProjectManagerDashboard = ({
                               {r.items.map((it, idx) => (
                                 <tr key={idx} className="border-b">
                                   <td className="py-2">{it.name}</td>
-                                  <td className="py-2">{it.type || 'Produk'}</td>
+                                  <td className="py-2">
+                                    {it.type || "Produk"}
+                                  </td>
                                   <td className="py-2">{it.qty} </td>
-                                  <td className="py-2">{it.unit || '-'}</td>
-                                  <td className="py-2">Rp {Number(it.price || 0).toLocaleString()}</td>
-                                  <td className="py-2">Rp {Number((it.qty || 0) * (it.price || 0)).toLocaleString()}</td>
+                                  <td className="py-2">{it.unit || "-"}</td>
+                                  <td className="py-2">
+                                    Rp {Number(it.price || 0).toLocaleString()}
+                                  </td>
+                                  <td className="py-2">
+                                    Rp{" "}
+                                    {Number(
+                                      (it.qty || 0) * (it.price || 0)
+                                    ).toLocaleString()}
+                                  </td>
                                 </tr>
                               ))}
                               <tr>
-                                <td colSpan={5} className="py-2 font-medium text-right">Total Biaya RAB</td>
-                                <td className="py-2 font-medium">Rp {Number(r.totalEstimate || 0).toLocaleString()}</td>
+                                <td
+                                  colSpan={5}
+                                  className="py-2 font-medium text-right"
+                                >
+                                  Total Biaya RAB
+                                </td>
+                                <td className="py-2 font-medium">
+                                  Rp{" "}
+                                  {Number(
+                                    r.totalEstimate || 0
+                                  ).toLocaleString()}
+                                </td>
                               </tr>
                             </tbody>
                           </table>
@@ -450,7 +544,7 @@ const ProjectManagerDashboard = ({
             </div>
           </div>
         );
-      
+
       default:
         return <ProjectList projects={projects} user={user} />;
     }

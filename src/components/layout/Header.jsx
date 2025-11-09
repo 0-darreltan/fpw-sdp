@@ -1,14 +1,15 @@
 import React from "react";
+import { useNavigate } from "react-router";
 
-const Header = ({ user, onLogout, onNavigateHome }) => {
+const Header = ({ user }) => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
-    onLogout();
+    navigate("/login");
   };
 
   const handleNavigateHome = () => {
-    if (onNavigateHome) {
-      onNavigateHome();
-    }
+    navigate("/");
   };
 
   const getRoleDisplayName = (role) => {

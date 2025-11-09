@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const { connectDB } = require("./src/config/database");
+const cors = require("cors");
 
 connectDB();
 
@@ -10,6 +11,14 @@ const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: "http://localhost:5173", // ✅ frontend URL (ganti sesuai port Vite)
+    credentials: true, // ✅ izinkan cookies
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 const {
   userRouter,
