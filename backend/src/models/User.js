@@ -11,7 +11,9 @@ const UserSchema = new mongoose.Schema(
     },
     name: { type: String },
     email: { type: String, unique: true, index: true },
-    phone: { type: String },
+    access_token: { type: String },
+    refresh_token: { type: String },
+    phone: { type: String }
   },
   { timestamps: true }
 );
