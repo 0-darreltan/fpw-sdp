@@ -6,7 +6,7 @@ import {
   RouterProvider,
 } from "react-router";
 import ErrorPage from "./components/ErrorPage";
-import FrontendLayoutPage from "./pages/FrontEnd/frontendLayoutPage";
+import FrontendLayoutPage from "./pages/FrontEnd/FrontendLayoutPage";
 import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import CustomerDashboard from "./pages/FrontEnd/CustomerDashboard";

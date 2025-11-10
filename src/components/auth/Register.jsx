@@ -207,13 +207,13 @@ const Register = ({ onRegistered }) => {
           </button>
         </form>
         <div>
-          <p className="text-center text-white mt-4">
+          <p className="text-center text-gray-600 mt-4">
             Sudah punya akun?{" "}
             <button
               onClick={() => navigate("/login")}
-              className="text-yellow-300 underline hover:text-yellow-400"
+              className="text-blue-600 underline hover:text-yellow-400"
             >
-              Masuk di sini
+              Login di sini
             </button>
           </p>
         </div>
