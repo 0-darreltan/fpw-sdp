@@ -3,8 +3,8 @@ import api from "../api";
 
 const fetchProduct = createAsyncThunk("product/fetch", async () => {
   const response = await api.get(`/products`);
-  console.log("🔍 API Response:", response.data.data);
-  return response.data.data;
+  console.log("🔍 API Response:", response.data);
+  return response.data;
 });
 
 const fetchProductById = createAsyncThunk("product/fetchById", async (id) => {

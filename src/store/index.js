@@ -23,8 +23,8 @@ export const store = configureStore({
     users: persistUserReducer,
     proposal: persistProposalReducer,
     project: persistProjectReducer,
-    Product: persistProductReducer,
-    Order: persistOrderReducer,
+    product: persistProductReducer,
+    order: persistOrderReducer,
   },
 });
 

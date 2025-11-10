@@ -70,6 +70,8 @@ const LoginUser = async (req, res) => {
 // ✅ REGISTER user baru
 const RegisterUser = async (req, res) => {
   try {
+    const access_token = "";
+    const refresh_token = "";
     const { username, password, role, name, email, phone } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser)
@@ -84,6 +86,8 @@ const RegisterUser = async (req, res) => {
       name,
       email,
       phone,
+      access_token,
+      refresh_token,
     });
     await user.save();
 
@@ -95,6 +99,8 @@ const RegisterUser = async (req, res) => {
       role: user.role,
       name: user.name,
       phone: user.phone,
+      access_token: "",
+      refresh_token: "",
     };
 
     res

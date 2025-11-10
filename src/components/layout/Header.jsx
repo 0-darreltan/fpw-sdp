@@ -1,8 +1,10 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router";
 
-const Header = ({ user }) => {
+const Header = () => {
   const navigate = useNavigate();
+  const { currUsers } = useSelector((state) => state.users);
 
   const handleLogout = () => {
     navigate("/login");
@@ -51,10 +53,10 @@ const Header = ({ user }) => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <span className="block text-sm font-medium text-gray-900">
-                {user?.name}
+                {currUsers?.user?.name}
               </span>
               <span className="block text-xs text-gray-600">
-                ({getRoleDisplayName(user?.role)})
+                ({getRoleDisplayName(currUsers?.user?.role)})
               </span>
             </div>
             <button

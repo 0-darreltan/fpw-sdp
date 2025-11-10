@@ -13,7 +13,7 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, unique: true, index: true },
     access_token: { type: String },
     refresh_token: { type: String },
-    phone: { type: String }
+    phone: { type: String },
   },
   { timestamps: true }
 );

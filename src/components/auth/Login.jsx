@@ -1,13 +1,17 @@
 import { useForm } from "react-hook-form";
 import { loginValidationSchema } from "../../utils/validation/loginValidation";
 import { joiResolver } from "@hookform/resolvers/joi";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { actionUser } from "../../features/users/userSlice";
 import { useNavigate } from "react-router";
 
 const Login = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { currUsers } = useSelector((state) => state.users);
+
+  console.log(currUsers);
+
   const {
     register,
     handleSubmit,
@@ -20,9 +24,19 @@ const Login = () => {
     try {
       console.log(data);
 
-      await dispatch(actionUser.LoginUser(data)).unwrap();
-      navigate("/customer");
+      const response = await dispatch(actionUser.LoginUser(data)).unwrap();
 
+      console.log("Login response:", response);
+      console.log("User role:", response?.user?.role);
+
+      // ✅ Gunakan response.user.role, bukan currUsers
+      if (response?.user?.role === "admin") {
+        navigate("/admin");
+      } else if (response?.user?.role === "project_manager") {
+        navigate("/projectmanager");
+      } else {
+        navigate("/customer");
+      }
       alert("login Berhasil");
     } catch (error) {
       console.error("Login failed:", error);
@@ -124,6 +138,21 @@ const Login = () => {
             Login
           </button>
         </form>
+
+        <div>
+          <p className="mt-6 text-center text-gray-600">
+            Belum punya akun? Daftar Sekarang
+          </p>
+
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={() => navigate("/register")}
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Register
+            </button>
+          </div>
+        </div>
 
         {/* <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-semibold text-gray-800 mb-3">Demo Accounts:</h4>
