@@ -140,9 +140,7 @@ const Login = () => {
         </form>
 
         <div>
-          <p className="mt-6 text-center text-gray-600">
-            Belum punya akun? Daftar Sekarang
-          </p>
+          <p className="mt-6 text-center ">Belum punya akun? Daftar Sekarang</p>
 
           <div className="mt-4 flex justify-center">
             <button
