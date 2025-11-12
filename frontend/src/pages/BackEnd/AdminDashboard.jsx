@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation, Outlet } from "react-router";
+import Dashboard from "./Dashboard";
 import UserManagement from "../../components/admin/UserManagement";
 import ProductManagement from "../../components/admin/ProductManagement";
 import MaterialManagement from "../../components/admin/MaterialManagement";
@@ -12,6 +13,12 @@ const AdminDashboard = ({ data }) => {
 
   const { currUsers } = useSelector((state) => state.users);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ✅ Deteksi nested route (create/edit product)
+  const isNestedRoute =
+    location.pathname.includes("/admin/products/create") ||
+    location.pathname.includes("/admin/products/edit");
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -21,108 +28,16 @@ const AdminDashboard = ({ data }) => {
     navigate("/login");
   };
 
-  const stats = [
-    {
-      id: "orders",
-      label: "Total Pesanan",
-      icon: "📋",
-      count: data?.orders?.length || 0,
-      color: "blue",
-    },
-    {
-      id: "users",
-      label: "Total User",
-      icon: "👥",
-      count: data?.users?.length || 0,
-      color: "green",
-    },
-    {
-      id: "products",
-      label: "Total Produk",
-      icon: "📦",
-      count: data?.products?.length || 0,
-      color: "purple",
-    },
-    {
-      id: "projects",
-      label: "Proyek Aktif",
-      icon: "🏗️",
-      count: data?.projects?.length || 0,
-      color: "orange",
-    },
-  ];
-
   const renderContent = () => {
+    // ✅ Jika nested route, render Outlet
+    if (isNestedRoute) {
+      return <Outlet />;
+    }
+
+    // ✅ Render menu biasa
     switch (activeTab) {
       case "dashboard":
-        return (
-          <div className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat) => (
-                <div
-                  key={stat.id}
-                  className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-1">{stat.label}</p>
-                      <p className="text-3xl font-bold text-gray-900">
-                        {stat.count}
-                      </p>
-                    </div>
-                    <div className="text-4xl">{stat.icon}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Aktivitas Terbaru
-              </h3>
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl">
-                      📝
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
-                        Pesanan baru masuk
-                      </p>
-                      <p className="text-xs text-gray-500">2 menit yang lalu</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Charts Placeholder */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 h-64">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Grafik Penjualan
-                </h3>
-                <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg">
-                  <p className="text-gray-400">Chart placeholder</p>
-                </div>
-              </div>
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 h-64">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Status Proyek
-                </h3>
-                <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg">
-                  <p className="text-gray-400">Chart placeholder</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+        return <Dashboard data={data} />;
 
       case "orders":
         return <OrderManagement orders={data?.orders || []} />;
@@ -131,7 +46,7 @@ const AdminDashboard = ({ data }) => {
         return <UserManagement users={data?.users || []} />;
 
       case "products":
-        return <ProductManagement products={data?.products || []} />;
+        return <ProductManagement />;
 
       case "materials":
         return <MaterialManagement materials={data?.materials || []} />;
@@ -232,9 +147,12 @@ const AdminDashboard = ({ data }) => {
             {/* Dashboard */}
             <li>
               <button
-                onClick={() => setActiveTab("dashboard")}
+                onClick={() => {
+                  setActiveTab("dashboard");
+                  navigate("/admin");
+                }}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
-                  activeTab === "dashboard"
+                  activeTab === "dashboard" && !isNestedRoute
                     ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-semibold shadow-lg"
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
@@ -285,7 +203,7 @@ const AdminDashboard = ({ data }) => {
               <button
                 onClick={() => setActiveTab("products")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
-                  activeTab === "products"
+                  activeTab === "products" || isNestedRoute
                     ? "bg-gray-700 text-white"
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
@@ -313,7 +231,7 @@ const AdminDashboard = ({ data }) => {
         </div>
       </aside>
 
-      {/* ✅ Toggle Sidebar Button - Posisi tetap di samping sidebar */}
+      {/* Toggle Sidebar Button */}
       <button
         onClick={toggleSidebar}
         className={`fixed top-24 z-50 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white p-3 rounded-r-lg shadow-lg transition-all duration-300 ${

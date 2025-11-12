@@ -1,81 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router";
+import { actionProduct } from "../../features/product/productSlice";
 
-const ProductManagement = ({
-  products,
-  onAddProduct,
-  onUpdateProduct,
-  onDeleteProduct,
-}) => {
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "",
-    unit: "",
-    price: "",
-    description: "",
-    status: "active",
-    unitOther: "",
-  });
+const ProductManagement = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { listProducts, loading, error } = useSelector(
+    (state) => state.product
+  );
 
-  const units = ["pcs", "kg", "m3", "unit", "liter", "m", "set"];
+  useEffect(() => {
+    dispatch(actionProduct.fetchProduct());
+  }, [dispatch]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const productData = {
-      ...formData,
-      price: parseFloat(formData.price) || 0,
-      unit:
-        formData.unit === "other" ? formData.unitOther || "" : formData.unit,
-    };
-
-    if (editingProduct) {
-      // Parent expects a full product object for update
-      const updatedProduct = {
-        ...editingProduct,
-        ...productData,
-        id: editingProduct.id,
-      };
-      onUpdateProduct(updatedProduct);
-    } else {
-      // Let parent assign id/createdAt
-      onAddProduct(productData);
-    }
-    resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      category: "",
-      unit: "",
-      price: "",
-      description: "",
-      status: "active",
-      unitOther: "",
-    });
-    setEditingProduct(null);
-    setShowModal(false);
-  };
-
-  const handleEdit = (product) => {
-    setEditingProduct(product);
-    const isKnownUnit = units.includes(product.unit);
-    setFormData({
-      name: product.name,
-      category: product.category,
-      unit: isKnownUnit ? product.unit : "other",
-      unitOther: isKnownUnit ? "" : product.unit,
-      price: product.price.toString(),
-      description: product.description,
-      status: product.status || "active",
-    });
-    setShowModal(true);
-  };
-
-  const handleDelete = (productId) => {
+  const handleDelete = async (productId) => {
     if (window.confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
-      onDeleteProduct(productId);
+      try {
+        await dispatch(actionProduct.deleteProduct(productId)).unwrap();
+        alert("Produk berhasil dihapus!");
+        dispatch(actionProduct.fetchProduct());
+      } catch (err) {
+        alert(`Error: ${err.message || "Gagal menghapus produk"}`);
+        console.error("Error deleting product:", err);
+      }
     }
   };
 
@@ -109,7 +57,7 @@ const ProductManagement = ({
         </h3>
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors duration-200"
-          onClick={() => setShowModal(true)}
+          onClick={() => navigate("/admin/products/create")}
         >
           + Tambah Produk
         </button>
@@ -132,7 +80,6 @@ const ProductManagement = ({
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                 Harga
               </th>
-              
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                 Status
               </th>
@@ -142,260 +89,144 @@ const ProductManagement = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {products.map((product) => (
-              <tr key={product.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {product.name}
-                    </div>
-                    {product.description && (
-                      <div className="text-sm text-gray-500">
-                        {product.description}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                    {product.category}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900">
-                  {product.unit}
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {formatPrice(product.price)}
-                </td>
-                
-                <td className="px-4 py-3">
-                  {getStatusBadge(product.status || "active")}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-center space-x-2">
-                    <button
-                      className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-3 py-1 rounded-md text-xs font-medium transition-colors duration-200"
-                      onClick={() => handleEdit(product)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1 rounded-md text-xs font-medium transition-colors duration-200"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      Hapus
-                    </button>
-                  </div>
+            {loading ? (
+              <tr>
+                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                  Memuat data...
                 </td>
               </tr>
-            ))}
+            ) : error ? (
+              <tr>
+                <td colSpan="6" className="px-4 py-8 text-center text-red-500">
+                  Error: {error}
+                </td>
+              </tr>
+            ) : listProducts.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                  Belum ada produk
+                </td>
+              </tr>
+            ) : (
+              listProducts.map((product) => (
+                <tr key={product._id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {product.name}
+                      </div>
+                      {product.description && (
+                        <div className="text-sm text-gray-500">
+                          {product.description.substring(0, 50)}
+                          {product.description.length > 50 ? "..." : ""}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                      {product.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    {product.unit}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    {formatPrice(product.price)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {getStatusBadge(product.status || "active")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-center space-x-2">
+                      <button
+                        className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-3 py-1 rounded-md text-xs font-medium transition-colors duration-200"
+                        onClick={() =>
+                          navigate(`/admin/products/edit/${product._id}`)
+                        }
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="bg-red-100 text-red-800 hover:bg-red-200 px-3 py-1 rounded-md text-xs font-medium transition-colors duration-200"
+                        onClick={() => handleDelete(product._id)}
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Mobile Card View */}
       <div className="lg:hidden space-y-4">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
-          >
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{product.name}</h4>
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium mt-1 inline-block">
-                  {product.category}
-                </span>
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">Memuat data...</div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">Error: {error}</div>
+        ) : listProducts.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">Belum ada produk</div>
+        ) : (
+          listProducts.map((product) => (
+            <div
+              key={product._id}
+              className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900">{product.name}</h4>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium mt-1 inline-block">
+                    {product.category}
+                  </span>
+                </div>
+                <div className="ml-2">
+                  {getStatusBadge(product.status || "active")}
+                </div>
               </div>
-              <div className="ml-2">
-                {getStatusBadge(product.status || "active")}
-              </div>
-            </div>
 
-            {product.description && (
-              <p className="text-sm text-gray-600 mb-3">
-                {product.description}
-              </p>
-            )}
+              {product.description && (
+                <p className="text-sm text-gray-600 mb-3">
+                  {product.description}
+                </p>
+              )}
 
               <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-              <div>
-                <span className="text-gray-600">Satuan: </span>
-                <span className="font-medium">{product.unit}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-gray-600">Harga: </span>
-                <span className="font-bold text-lg text-green-600">
-                  {formatPrice(product.price)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex space-x-2">
-              <button
-                className="flex-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                onClick={() => handleEdit(product)}
-              >
-                Edit
-              </button>
-              <button
-                className="flex-1 bg-red-100 text-red-800 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-                onClick={() => handleDelete(product.id)}
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h4 className="text-xl font-bold text-gray-900">
-                {editingProduct ? "Edit Produk" : "Tambah Produk Baru"}
-              </h4>
-              <button
-                className="text-gray-500 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center"
-                onClick={resetForm}
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nama Produk
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <span className="text-gray-600">Satuan: </span>
+                  <span className="font-medium">{product.unit}</span>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Kategori
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Pilih Kategori</option>
-                    <option value="Jasa Konstruksi">Jasa Konstruksi</option>
-                    <option value="Jasa Renovasi">Jasa Renovasi</option>
-                    <option value="Jasa Pemasangan">Jasa Pemasangan</option>
-                    <option value="Interior">Interior</option>
-                    <option value="Pekerjaan Infrastruktur">Pekerjaan Infrastruktur</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
+                <div className="col-span-2">
+                  <span className="text-gray-600">Harga: </span>
+                  <span className="font-bold text-lg text-green-600">
+                    {formatPrice(product.price)}
+                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Satuan
-                  </label>
-                  <select
-                    value={formData.unit}
-                    onChange={(e) =>
-                      setFormData({ ...formData, unit: e.target.value })
-                    }
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Pilih satuan</option>
-                    {units.map((u) => (
-                      <option key={u} value={u}>
-                        {u}
-                      </option>
-                    ))}
-                    <option value="other">Lainnya (isi manual)</option>
-                  </select>
-                  {formData.unit === "other" && (
-                    <input
-                      type="text"
-                      placeholder="Masukkan satuan lainnya"
-                      value={formData.unitOther || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, unitOther: e.target.value })
-                      }
-                      className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-md"
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Harga
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price: e.target.value })
-                    }
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Non-aktif</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Deskripsi
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
+              <div className="flex space-x-2">
+                <button
+                  className="flex-1 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                  onClick={() =>
+                    navigate(`/admin/products/edit/${product._id}`)
                   }
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors duration-200"
-                  onClick={resetForm}
                 >
-                  Batal
+                  Edit
                 </button>
                 <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200"
+                  className="flex-1 bg-red-100 text-red-800 hover:bg-red-200 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                  onClick={() => handleDelete(product._id)}
                 >
-                  {editingProduct ? "Update" : "Tambah"}
+                  Hapus
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };

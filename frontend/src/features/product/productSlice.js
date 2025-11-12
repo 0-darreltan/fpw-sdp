@@ -24,7 +24,15 @@ const updateProduct = createAsyncThunk(
   "product/update",
   async (productData) => {
     const id = productData._id || productData.id;
-    const response = await api.put(`/products/${id}`, productData);
+
+    // Remove _id and id from body, hanya kirim di URL
+    const { _id, ...bodyData } = productData;
+    if (bodyData.id) delete bodyData.id;
+
+    console.log("🔄 Update API call - ID:", id);
+    console.log("🔄 Update API call - Body:", bodyData);
+
+    const response = await api.put(`/products/${id}`, bodyData);
     return response.data;
   }
 );
@@ -125,7 +133,8 @@ const productSlice = createSlice({
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
         state.loading = false;
-        const deletedId = action.payload?._id ?? action.payload ?? null;
+        // Backend bisa return ID yang dihapus atau object produk
+        const deletedId = action.meta?.arg ?? action.payload?._id ?? null;
         if (!deletedId) return;
 
         // Hapus dari listProducts

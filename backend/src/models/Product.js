@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -7,11 +7,12 @@ const ProductSchema = new mongoose.Schema(
     price: { type: Number },
     unit: { type: String },
     description: { type: String },
-    metadata: { type: mongoose.Schema.Types.Mixed }
+    status: { type: String, enum: ["active", "inactive"], default: "active" },
+    metadata: { type: mongoose.Schema.Types.Mixed },
   },
   { timestamps: true }
 );
 
-ProductSchema.index({ name: 'text', description: 'text' });
+ProductSchema.index({ name: "text", description: "text" });
 
-module.exports = mongoose.model('Product', ProductSchema);
+module.exports = mongoose.model("Product", ProductSchema);
