@@ -11,19 +11,31 @@ const fetchUserById = createAsyncThunk("users/fetchUserById", async (id) => {
   return response.data;
 });
 
-const createUser = createAsyncThunk("users/createUser", async (userData) => {
-  const response = await api.post("/users", userData);
-  return response.data;
+const createUser = createAsyncThunk("users/createUser", async (userData, { rejectWithValue }) => {
+  try {
+    const response = await api.post("/users", userData);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data || err.message);
+  }
 });
 
-const updateUser = createAsyncThunk("users/updateUser", async (userData) => {
-  const response = await api.put(`/users/${userData.id}`, userData);
-  return response.data;
+const updateUser = createAsyncThunk("users/updateUser", async (userData, { rejectWithValue }) => {
+  try {
+    const response = await api.put(`/users/${userData.id}`, userData);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data || err.message);
+  }
 });
 
-const deleteUser = createAsyncThunk("users/deleteUser", async (id) => {
-  const response = await api.delete(`/users/${id}`);
-  return response.data;
+const deleteUser = createAsyncThunk("users/deleteUser", async (id, { rejectWithValue }) => {
+  try {
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(err.response?.data || err.message);
+  }
 });
 
 const LoginUser = createAsyncThunk(

@@ -219,7 +219,7 @@ const updateUser = async (req, res) => {
 
     // Hanya admin atau user sendiri yang bisa update
     if (
-      req.user.role !== "Administrator" &&
+      req.user.role !== "admin" &&
       req.user._id.toString() !== targetId
     ) {
       return res.status(403).json({ message: "Access denied" });
@@ -275,9 +275,9 @@ const acceptProposal = async (req, res) => {
     if (!proposal)
       return res.status(404).json({ message: "Proposal not found" });
 
-    // Only the customer who owns the proposal or an Administrator can accept
+    // Only the customer who owns the proposal or an admin can accept
     if (
-      req.user.role !== "Administrator" &&
+      req.user.role !== "admin" &&
       proposal.customerId.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({ message: "Access denied" });
@@ -335,9 +335,9 @@ const rejectProposal = async (req, res) => {
     if (!proposal)
       return res.status(404).json({ message: "Proposal not found" });
 
-    // Only the customer who owns the proposal or an Administrator can reject
+    // Only the customer who owns the proposal or an admin can reject
     if (
-      req.user.role !== "Administrator" &&
+      req.user.role !== "admin" &&
       proposal.customerId.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({ message: "Access denied" });

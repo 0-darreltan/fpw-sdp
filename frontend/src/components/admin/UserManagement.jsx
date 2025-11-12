@@ -52,11 +52,7 @@ const UserManagement = () => {
         const userId = editingUser._id || editingUser.id;
         
         await dispatch(
-<<<<<<< HEAD
-          actionUser.updateUser({ id: editingUser._id, ...formData })
-=======
           actionUser.updateUser({ id: userId, ...formData })
->>>>>>> b3cf56249745734a9866db104a264da482ea4541
         ).unwrap();
         alert("User berhasil diupdate!");
       } else {
@@ -67,10 +63,33 @@ const UserManagement = () => {
       dispatch(actionUser.fetchUsers()); // Refresh data
     } catch (error) {
       console.error("Update/Create user error:", error);
-      const errorMessage = 
-        error?.response?.data?.message || 
-        error?.message || 
-        "Unknown error";
+      
+      // Extract error message from various possible locations
+      let errorMessage = "Unknown error";
+      
+      // Handle Redux Toolkit rejected action
+      if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Check for nested response data
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      }
+      
+      // If it's a Redux rejection with payload
+      if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') {
+        errorMessage = error.message;
+      }
+      
+      // Show current role if available for debugging
+      const roleInfo = error?.response?.data?.currentRole || error?.data?.currentRole || error?.currentRole;
+      if (roleInfo) {
+        errorMessage += ` (Your role: ${roleInfo})`;
+      }
+      
       alert(`Gagal menyimpan user: ${errorMessage}`);
     }
   };

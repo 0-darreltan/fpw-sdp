@@ -1,13 +1,13 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { postData } from "../../api";
+import api from "../api";
 
 // Thunk untuk request token ke backend
 export const createTransaction = createAsyncThunk(
   "payment/createTransaction",
   async (orderData, { rejectWithValue }) => {
     try {
-      const data = await postData("/payment/create-transaction", orderData);
-      return data;
+      const response = await api.post("/payment/create-transaction", orderData);
+      return response.data;
     } catch (err) {
       return rejectWithValue(err.message);
     }

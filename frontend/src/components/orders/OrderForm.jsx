@@ -44,8 +44,8 @@ const orderSchema = Joi.object({
     }),
 });
 
-const navigate = useNavigate();
 const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
+  const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState("");
