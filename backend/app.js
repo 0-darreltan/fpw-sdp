@@ -10,9 +10,37 @@ connectDB();
 
 const app = express();
 
+<<<<<<< HEAD
 app.use(
   cors({
     origin: "http://localhost:5173",
+=======
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// CORS configuration - allows both development and production origins
+const allowedOrigins = [
+  "http://localhost:5173", // Vite dev server
+  "http://localhost:5174", // Backup Vite port
+  "https://fpw-sdp.vercel.app", // Production (removed trailing slash)
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // During development, accept any origin so debugging (local dev + Vite) isn't blocked
+      if (process.env.NODE_ENV !== "production") return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+>>>>>>> b3cf56249745734a9866db104a264da482ea4541
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],

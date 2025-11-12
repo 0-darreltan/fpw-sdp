@@ -4,8 +4,8 @@ const OrderHistory = ({ orders, user }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  // Filter orders for current customer
-  const customerOrders = orders.filter((order) => order.customerId === user.id);
+  // Filter orders for current customer - handle undefined orders
+  const customerOrders = orders?.filter((order) => order.customerId === user?.id) || [];
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("id-ID", {

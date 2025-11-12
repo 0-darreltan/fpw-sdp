@@ -3,11 +3,15 @@ const { User } = require("../models");
 require("dotenv").config();
 
 const authMiddleware = async (req, res, next) => {
+  console.log("authMiddleware called for:", req.method, req.originalUrl);
+  
   // 🔹 Ambil header Authorization
   const authHeader = req.headers.authorization;
+  console.log("Authorization header:", authHeader ? "Present" : "Missing");
 
   // 🔹 Cek apakah header ada dan berformat "Bearer <token>"
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log("❌ No token provided");
     return res
       .status(401)
       .json({ message: "Access denied. No token provided." });

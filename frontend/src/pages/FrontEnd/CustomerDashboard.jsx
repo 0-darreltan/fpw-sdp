@@ -1,15 +1,25 @@
-import React, { useState } from "react";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import OrderForm from "../../components/orders/OrderForm";
 import OrderHistory from "../../components/orders/OrderHistory";
 import ProductCatalog from "../../components/products/ProductCatalog";
+import { actionOrder } from "../../features/order/orderSlice";
 
 const CustomerDashboard = ({ onAddOrder }) => {
+  const dispatch = useDispatch();
   const { currUsers } = useSelector((state) => state.users);
   const { listProducts } = useSelector((state) => state.product);
+  const { listOrders } = useSelector((state) => state.order);
 
   const [activeTab, setActiveTab] = useState("catalog");
   const [cartItems, setCartItems] = useState([]);
+
+  // Fetch orders when component mounts or when switching to history tab
+  useEffect(() => {
+    if (currUsers?.id) {
+      dispatch(actionOrder.fetchOrders());
+    }
+  }, [dispatch, currUsers?.id]);
 
   const tabs = [
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
@@ -53,7 +63,7 @@ const CustomerDashboard = ({ onAddOrder }) => {
         );
 
       case "history":
-        return <OrderHistory user={currUsers} />;
+        return <OrderHistory user={currUsers} orders={listOrders} />;
 
       default:
         return <ProductCatalog onAddToCart={handleAddFromCatalog} />;

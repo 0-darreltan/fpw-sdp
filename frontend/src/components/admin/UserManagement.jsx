@@ -4,9 +4,8 @@ import { actionUser } from "../../features/users/userSlice";
 
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { listUsers, loading } = useSelector((state) => state.users);
-  console.log("Users from state:", listUsers);
-
+  const { listUsers, loading, currUsers } = useSelector((state) => state.users);
+  
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,8 +48,15 @@ const UserManagement = () => {
 
     try {
       if (editingUser) {
+        // Handle both _id (MongoDB) and id formats
+        const userId = editingUser._id || editingUser.id;
+        
         await dispatch(
+<<<<<<< HEAD
           actionUser.updateUser({ id: editingUser._id, ...formData })
+=======
+          actionUser.updateUser({ id: userId, ...formData })
+>>>>>>> b3cf56249745734a9866db104a264da482ea4541
         ).unwrap();
         alert("User berhasil diupdate!");
       } else {
@@ -60,7 +66,12 @@ const UserManagement = () => {
       resetForm();
       dispatch(actionUser.fetchUsers()); // Refresh data
     } catch (error) {
-      alert(error?.message || "Gagal menyimpan user");
+      console.error("Update/Create user error:", error);
+      const errorMessage = 
+        error?.response?.data?.message || 
+        error?.message || 
+        "Unknown error";
+      alert(`Gagal menyimpan user: ${errorMessage}`);
     }
   };
 
@@ -275,11 +286,13 @@ const UserManagement = () => {
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
+              filteredUsers.map((user) => {
+                const userId = user._id || user.id;
+                return (
+                  <tr
+                    key={userId}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center text-xl mr-3 shadow-sm">
@@ -328,7 +341,7 @@ const UserManagement = () => {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(userId)}
                         disabled={
                           user.role === "admin" &&
                           listUsers.filter((u) => u.role === "admin").length ===
@@ -354,7 +367,8 @@ const UserManagement = () => {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
