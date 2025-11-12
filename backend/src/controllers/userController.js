@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, Proposal, RAB, Project } = require("../models");
 const bcrypt = require("bcryptjs");
 
 // ✅ GET semua user (Admin only)
@@ -28,6 +28,7 @@ const getUserById = async (req, res) => {
 // ✅ LOGIN user (kirim token JWT)
 const LoginUser = async (req, res) => {
   try {
+    console.log("Login attempt:", req.body);
     const { username, password } = req.body;
     const user = await User.findOne({ username });
 
@@ -183,7 +184,104 @@ const LogOutUser = (req, res) => {
   res.status(200).json({ message: "User logged out successfully" });
 };
 
-const acceptProposal = async (req, res) => {};
+const acceptProposal = async (req, res) => {
+  try {
+    const { proposalId } = req.body;
+    if (!proposalId)
+      return res
+        .status(400)
+        .json({ message: "proposalId is required in request body" });
+
+    const proposal = await Proposal.findById(proposalId);
+    if (!proposal)
+      return res.status(404).json({ message: "Proposal not found" });
+
+    // Only the customer who owns the proposal or an Administrator can accept
+    if (
+      req.user.role !== "Administrator" &&
+      proposal.customerId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Prevent re-approving
+    if (proposal.status === "approved")
+      return res.status(400).json({ message: "Proposal already approved" });
+
+    // Mark proposal as approved
+    proposal.status = "approved";
+    if (!proposal.sentAt) proposal.sentAt = new Date();
+
+    // Ensure related RAB exists and, if there's no project yet, create one
+    const rab = await RAB.findById(proposal.rabId);
+    if (rab && !rab.projectId) {
+      const project = new Project({
+        name: rab.title || `Project from RAB ${rab._id}`,
+        location: "",
+        description: rab.title || "",
+        projectManagerId: proposal.projectManagerId,
+        status: "active",
+        startDate: new Date(),
+        budget: proposal.total || 0,
+      });
+      await project.save();
+
+      rab.projectId = project._id;
+      await rab.save();
+    }
+
+    await proposal.save();
+
+    res
+      .status(200)
+      .json({ message: "Proposal accepted successfully", data: proposal });
+  } catch (error) {
+    console.error("acceptProposal error:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error: " + error.message });
+  }
+};
+
+const rejectProposal = async (req, res) => {
+  try {
+    const { proposalId } = req.body;
+    if (!proposalId)
+      return res
+        .status(400)
+        .json({ message: "proposalId is required in request body" });
+
+    const proposal = await Proposal.findById(proposalId);
+    if (!proposal)
+      return res.status(404).json({ message: "Proposal not found" });
+
+    // Only the customer who owns the proposal or an Administrator can reject
+    if (
+      req.user.role !== "Administrator" &&
+      proposal.customerId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // Prevent re-rejecting
+    if (proposal.status === "rejected")
+      return res.status(400).json({ message: "Proposal already rejected" });
+
+    proposal.status = "rejected";
+    if (!proposal.sentAt) proposal.sentAt = new Date();
+
+    await proposal.save();
+
+    res
+      .status(200)
+      .json({ message: "Proposal rejected successfully", data: proposal });
+  } catch (error) {
+    console.error("rejectProposal error:", error);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error: " + error.message });
+  }
+};
 
 module.exports = {
   getUser,
@@ -195,4 +293,5 @@ module.exports = {
   updateUser,
   deleteUser,
   acceptProposal,
+  rejectProposal,
 };

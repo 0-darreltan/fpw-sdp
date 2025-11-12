@@ -11,11 +11,15 @@ const {
   updateUser,
   deleteUser,
   acceptProposal,
+  rejectProposal,
 } = require("../controllers/UserController");
 
 // 🔐 Middleware
 const authMiddleware = require("../middlewares/authMiddleware");
-const { cekAdmin, cekProjectManager } = require("../middlewares/roleMiddleware");
+const {
+  cekAdmin,
+  cekProjectManager,
+} = require("../middlewares/roleMiddleware");
 
 // Debug: check imported types to catch any non-function exports
 console.log("[userRoute] imports:", {
@@ -31,6 +35,7 @@ console.log("[userRoute] imports:", {
   updateUser: typeof updateUser,
   deleteUser: typeof deleteUser,
   acceptProposal: typeof acceptProposal,
+  rejectProposal: typeof rejectProposal,
 });
 
 // ✅ Public routes (tidak butuh token)
@@ -52,5 +57,6 @@ router.put("/:id", authMiddleware, cekProjectManager, updateUser);
 router.delete("/:id", authMiddleware, cekAdmin, deleteUser);
 
 router.post("/accept-proposal", authMiddleware, acceptProposal);
+router.post("/reject-proposal", authMiddleware, rejectProposal);
 
 module.exports = router;
