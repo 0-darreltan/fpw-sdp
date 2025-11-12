@@ -13,4 +13,3 @@ module.exports = {
   productRouter,
   orderRouter,
 };
-`x`;

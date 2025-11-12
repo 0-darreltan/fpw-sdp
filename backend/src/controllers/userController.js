@@ -210,6 +210,7 @@ const acceptProposal = async (req, res) => {
 
     // Mark proposal as approved
     proposal.status = "approved";
+    // optional: mark sentAt if not set
     if (!proposal.sentAt) proposal.sentAt = new Date();
 
     // Ensure related RAB exists and, if there's no project yet, create one
