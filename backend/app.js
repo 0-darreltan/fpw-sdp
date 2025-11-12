@@ -3,22 +3,25 @@ require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const { connectDB } = require("./src/config/database");
+const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
 connectDB();
 
 const app = express();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: "https://fpw-sdp.vercel.app/",
+    origin: "http://localhost:5173",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const {
   userRouter,

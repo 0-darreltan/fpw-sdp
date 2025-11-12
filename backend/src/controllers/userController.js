@@ -147,10 +147,7 @@ const updateUser = async (req, res) => {
     const updates = req.body;
 
     // Hanya admin atau user sendiri yang bisa update
-    if (
-      req.user.role !== "Administrator" &&
-      req.user._id.toString() !== targetId
-    ) {
+    if (req.user.role !== "admin" && req.user._id.toString() !== targetId) {
       return res.status(403).json({ message: "Access denied" });
     }
 
