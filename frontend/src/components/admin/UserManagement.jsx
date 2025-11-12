@@ -50,7 +50,7 @@ const UserManagement = () => {
     try {
       if (editingUser) {
         await dispatch(
-          actionUser.updateUser({ id: editingUser.id, ...formData })
+          actionUser.updateUser({ id: editingUser._id, ...formData })
         ).unwrap();
         alert("User berhasil diupdate!");
       } else {
