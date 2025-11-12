@@ -10,11 +10,6 @@ connectDB();
 
 const app = express();
 
-<<<<<<< HEAD
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-=======
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -40,7 +35,6 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
->>>>>>> b3cf56249745734a9866db104a264da482ea4541
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -58,6 +52,8 @@ const {
   projectRouter,
   productRouter,
   orderRouter,
+  paymentRouter,
+  webhookRouter,
 } = require("./src/routes");
 
 app.use("/api/users", userRouter);
@@ -66,6 +62,8 @@ app.use("/api/proposals", proposalRouter);
 app.use("/api/projects", projectRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);
+app.use("/api/payments", paymentRouter);
+app.use("/api/webhooks", webhookRouter);
 
 app.get("/", (req, res) => {
   res.send("FPW + SDP Backend is running!");

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
+import { useNavigate } from "react-router";
 
 // ✅ Validation schema dengan Joi
 const orderSchema = Joi.object({
@@ -43,6 +44,7 @@ const orderSchema = Joi.object({
     }),
 });
 
+const navigate = useNavigate();
 const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
@@ -104,6 +106,27 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
     return watchItems.reduce((total, item) => {
       return total + calculateSubtotal(item);
     }, 0);
+  };
+
+  const handleCheckout = () => {
+    const orderData = {
+      projectName: watch("projectName"),
+      projectLocation: watch("projectLocation"),
+      projectDescription: watch("projectDescription"),
+      startDate: watch("startDate"),
+      endDate: watch("endDate"),
+      items: watchItems,
+      total: calculateTotal(),
+      customer: {
+        id: user?.id || user?._id,
+        name: user?.name,
+        email: user?.email,
+        phone: user?.phone,
+      },
+    };
+
+    // Navigasi ke halaman checkout
+    navigate("/checkout", { state: { order: orderData } });
   };
 
   const formatPrice = (price) => {
@@ -494,6 +517,19 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
             }`}
           >
             🚀 Kirim Pesanan RAB
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCheckout}
+            disabled={fields.length === 0}
+            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
+              fields.length === 0
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
+            }`}
+          >
+            💳 Lanjut ke Checkout
           </button>
         </div>
       </form>

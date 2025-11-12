@@ -12,7 +12,7 @@ const {
   deleteUser,
   acceptProposal,
   rejectProposal,
-} = require("../controllers/UserController");
+} = require("../controllers/userController");
 
 // 🔐 Middleware
 const authMiddleware = require("../middlewares/authMiddleware");

@@ -61,7 +61,6 @@ const CustomerDashboard = ({ onAddOrder }) => {
             initialItems={cartItems}
           />
         );
-
       case "history":
         return <OrderHistory user={currUsers} orders={listOrders} />;
 

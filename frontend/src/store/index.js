@@ -6,6 +6,7 @@ import proposalReducer from "../features/proposal/proposalSlice";
 import projectReducer from "../features/project/projectSlice";
 import productReducer from "../features/product/productSlice";
 import orderReducer from "../features/order/orderSlice";
+import paymentReducer from "../features/payment/paymentSlice";
 
 const persistConfig = {
   key: "user",
@@ -17,6 +18,7 @@ const persistProposalReducer = persistReducer(persistConfig, proposalReducer);
 const persistProjectReducer = persistReducer(persistConfig, projectReducer);
 const persistProductReducer = persistReducer(persistConfig, productReducer);
 const persistOrderReducer = persistReducer(persistConfig, orderReducer);
+const persistPaymentReducer = persistReducer(persistConfig, paymentReducer);
 
 export const store = configureStore({
   reducer: {
@@ -25,6 +27,7 @@ export const store = configureStore({
     project: persistProjectReducer,
     product: persistProductReducer,
     order: persistOrderReducer,
+    payment: persistPaymentReducer,
   },
 });
 
