@@ -44,11 +44,10 @@ const LoginUser = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    // Simpan token di database (optional, untuk tracking atau revocation)
+
     user.access_token = token;
     await user.save();
 
-    // ✅ Kirim token di response body DAN cookie (double protection)
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -58,7 +57,7 @@ const LoginUser = async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
-      token, // ✅ kirim token di body
+      token,
       user: {
         id: user._id,
         username: user.username,
@@ -72,7 +71,7 @@ const LoginUser = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error: " + error });
   }
 };
-// ✅ REGISTER user baru
+
 const RegisterUser = async (req, res) => {
   try {
     const { username, password, role, name, email, phone } = req.body;
@@ -80,12 +79,18 @@ const RegisterUser = async (req, res) => {
     if (existingUser)
       return res.status(409).json({ message: "User already exists" });
 
-    // hash password with bcryptjs before saving
+    const roleMapping = {
+      "Customer": "customer",
+      "Project Manager": "project_manager",
+      "Administrator": "admin"
+    };
+    const dbRole = roleMapping[role] || "customer";
+
     const hashed = await bcrypt.hash(password, 10);
     const user = new User({
       username,
       password: hashed,
-      role,
+      role: dbRole,
       name,
       email,
       phone,
@@ -94,7 +99,6 @@ const RegisterUser = async (req, res) => {
     });
     await user.save();
 
-    // return user data without password
     const userSafe = {
       id: user._id,
       username: user.username,
@@ -109,7 +113,28 @@ const RegisterUser = async (req, res) => {
       .json({ message: "User registered successfully", user: userSafe });
   } catch (error) {
     console.error("RegisterUser error:", error);
-    res.status(500).json({ message: "Internal Server Error: " + error });
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({ 
+        message: `${field} already exists. Please use a different ${field}.` 
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: "Validation error",
+        errors: messages 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? error.message : "An error occurred" 
+    });
   }
 };
 
@@ -121,7 +146,27 @@ const createUser = async (req, res) => {
     if (existingUser)
       return res.status(409).json({ message: "User already exists" });
 
-    const user = new User({ username, password, role, name, email, phone });
+    // Convert role from frontend format to database format
+    const roleMapping = {
+      "Customer": "customer",
+      "Project Manager": "project_manager",
+      "Administrator": "admin"
+    };
+    const dbRole = roleMapping[role] || role;
+
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = new User({ 
+      username, 
+      password: hashedPassword, 
+      role: dbRole, 
+      name, 
+      email, 
+      phone,
+      access_token: "",
+      refresh_token: ""
+    });
     await user.save();
 
     res.status(201).json({
@@ -136,24 +181,61 @@ const createUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Internal Server Error: " + error });
+    console.error("createUser error:", error);
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({ 
+        message: `${field} already exists. Please use a different ${field}.` 
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: "Validation error",
+        errors: messages 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: "Internal Server Error",
+      error: process.env.NODE_ENV === "development" ? error.message : "An error occurred" 
+    });
   }
 };
 
 // ✅ UPDATE user (user sendiri atau admin)
 const updateUser = async (req, res) => {
   try {
+    console.log("updateUser called by:", req.user.username, "| role:", req.user.role);
+    console.log("Target user ID:", req.params.id);
+    console.log("Current user ID:", req.user._id);
+    
     const targetId = req.params.id || req.user._id;
-    const updates = req.body;
+    const updates = { ...req.body };
 
     // Hanya admin atau user sendiri yang bisa update
-    if (
-      req.user.role !== "Administrator" &&
-      req.user._id.toString() !== targetId
-    ) {
+    const isAdmin = req.user.role === "admin" || req.user.role === "Administrator";
+    const isSelfUpdate = req.user._id.toString() === targetId;
+    
+    console.log("Is admin?", isAdmin);
+    console.log("Is self update?", isSelfUpdate);
+    
+    if (!isAdmin && !isSelfUpdate) {
+      console.log("❌ Access denied - not admin and not self");
       return res.status(403).json({ message: "Access denied" });
     }
 
+    // ✅ Hash password jika ada di request body
+    if (updates.password) {
+      console.log("Password update detected, hashing...");
+      updates.password = await bcrypt.hash(updates.password, 10);
+    }
+
+    console.log("✅ Authorization passed, updating user...");
     const user = await User.findByIdAndUpdate(targetId, updates, {
       new: true,
     }).select("-password");
@@ -161,6 +243,7 @@ const updateUser = async (req, res) => {
 
     res.status(200).json({ message: "User updated successfully", user });
   } catch (error) {
+    console.error("updateUser error:", error);
     res.status(500).json({ message: "Internal Server Error: " + error });
   }
 };

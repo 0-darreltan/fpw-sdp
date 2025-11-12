@@ -133,19 +133,32 @@ const userSlice = createSlice({
       })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = action.payload?.result || action.payload;
+        const updated = action.payload?.user || action.payload?.result || action.payload;
         if (!updated) return;
-        const updatedId = updated._id;
+        const updatedId = updated._id || updated.id;
 
+        // Update di list users
         state.listUsers = state.listUsers.map((user) =>
-          user._id === updatedId ? updated : user
+          (user._id || user.id) === updatedId ? updated : user
         );
-        if (state.oneUsers && state.oneUsers._id === updatedId) {
+        
+        // Update oneUsers jika sedang melihat detail user yang diupdate
+        if (state.oneUsers && (state.oneUsers._id || state.oneUsers.id) === updatedId) {
           state.oneUsers = updated;
         }
-        if (state.currUsers && state.currUsers._id === updatedId) {
-          state.currUsers = updated;
+        
+        // HANYA update currUsers jika yang diupdate adalah user yang sedang login
+        // Cek ID dari user yang sedang login vs ID user yang diupdate
+        const currentLoggedInUserId = state.currUsers?.user?.id || state.currUsers?.user?._id;
+        if (currentLoggedInUserId === updatedId) {
+          // Ini adalah self-update, update currUsers
+          state.currUsers = {
+            ...state.currUsers,
+            user: updated
+          };
+          sessionStorage.setItem("user", JSON.stringify(updated));
         }
+        // Jika tidak sama, JANGAN update currUsers (admin tetap sebagai admin)
       })
 
       .addCase(updateUser.rejected, (state, action) => {
