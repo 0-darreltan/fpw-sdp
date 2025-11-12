@@ -4,8 +4,8 @@ import { actionUser } from "../../features/users/userSlice";
 
 const UserManagement = () => {
   const dispatch = useDispatch();
-  const { users, loading } = useSelector((state) => state.users);
-  console.log("Users from state:", users);
+  const { listUsers, loading } = useSelector((state) => state.users);
+  console.log("Users from state:", listUsers);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -20,7 +20,6 @@ const UserManagement = () => {
     phone: "",
   });
 
-  // Fetch users saat component mount
   useEffect(() => {
     dispatch(actionUser.fetchUsers());
   }, [dispatch]);
@@ -131,7 +130,7 @@ const UserManagement = () => {
 
   // Filter users berdasarkan search dan role
   const filteredUsers =
-    users?.filter((user) => {
+    listUsers?.filter((user) => {
       const matchSearch =
         user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -332,7 +331,8 @@ const UserManagement = () => {
                         onClick={() => handleDelete(user.id)}
                         disabled={
                           user.role === "admin" &&
-                          users.filter((u) => u.role === "admin").length === 1
+                          listUsers.filter((u) => u.role === "admin").length ===
+                            1
                         }
                         className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Hapus"
@@ -364,25 +364,25 @@ const UserManagement = () => {
       <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
           <div className="text-2xl font-bold text-blue-600">
-            {users?.length || 0}
+            {listUsers?.length || 0}
           </div>
           <div className="text-sm text-blue-700">Total Users</div>
         </div>
         <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-4 border border-red-200">
           <div className="text-2xl font-bold text-red-600">
-            {users?.filter((u) => u.role === "admin").length || 0}
+            {listUsers?.filter((u) => u.role === "admin").length || 0}
           </div>
           <div className="text-sm text-red-700">Administrators</div>
         </div>
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
           <div className="text-2xl font-bold text-green-600">
-            {users?.filter((u) => u.role === "project_manager").length || 0}
+            {listUsers?.filter((u) => u.role === "project_manager").length || 0}
           </div>
           <div className="text-sm text-green-700">Project Managers</div>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
           <div className="text-2xl font-bold text-purple-600">
-            {users?.filter((u) => u.role === "customer").length || 0}
+            {listUsers?.filter((u) => u.role === "customer").length || 0}
           </div>
           <div className="text-sm text-purple-700">Customers</div>
         </div>

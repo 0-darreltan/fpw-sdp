@@ -22,6 +22,7 @@ const router = createBrowserRouter(
 
       <Route element={<FrontendLayoutPage />}>
         <Route path="customer" element={<CustomerDashboard />} />
+
         <Route path="projectmanager" element={<ProjectManagerDashboard />} />
       </Route>
       <Route path="admin" element={<AdminDashboard />} />
