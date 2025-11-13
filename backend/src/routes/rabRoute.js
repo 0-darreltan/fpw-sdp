@@ -15,8 +15,8 @@ const { cekAdmin, cekProjectManager } = require("../middlewares/roleMiddleware")
 router.get("/", authMiddleware, getRAB);
 router.get("/:id", authMiddleware, getRABById);
 
-// Buat dan ubah RAB hanya oleh Project Manager atau Admin
-router.post("/", authMiddleware, cekProjectManager, createRAB);
+// Customer dapat membuat RAB, Project Manager dapat membuat dan update
+router.post("/", authMiddleware, createRAB);
 router.put("/:id", authMiddleware, cekProjectManager, updateRAB);
 
 // Hapus RAB hanya oleh Admin

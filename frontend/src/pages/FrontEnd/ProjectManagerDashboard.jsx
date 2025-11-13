@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import MaterialRequest from "../../components/materials/MaterialRequest";
+import ProjectList from "../../components/projects/ProjectList";
 import { actionProject } from "../../features/project/projectSlice";
 import { actionProduct } from "../../features/product/productSlice";
 import { actionProposal } from "../../features/proposal/proposalSlice";
@@ -38,12 +39,23 @@ const ProjectManagerDashboard = ({
     name: "",
     location: "",
     description: "",
-    projectManagerId: user?.id,
-    status: "planning",
+    projectManagerId: "",
+    status: "planned",
     startDate: "",
     endDate: "",
     budget: "",
   });
+
+  // Helper function to convert ISO date to yyyy-MM-dd format
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return "";
+    }
+  };
 
   // ---- Redux connections (only used when parent doesn't pass props) ----
   const dispatch = useDispatch();
@@ -51,9 +63,13 @@ const ProjectManagerDashboard = ({
   const storeUser = useSelector((s) => s.users.currUsers?.user) || null;
   user = user || storeUser;
   const rawProjects = useSelector((s) => s.project.listProjects) || [];
+  const projectsLoading = useSelector((s) => s.project.loading);
+  const projectsError = useSelector((s) => s.project.error);
   const rawProducts = useSelector((s) => s.product.listProducts) || [];
-  const rawProposals = useSelector((s) => s.proposal.listProposals) || [];
-  const rawRabs = useSelector((s) => s.rab.listRabs) || [];
+  const rawProposalsFromStore = useSelector((s) => s.proposal.listProposals);
+  const rawProposals = Array.isArray(rawProposalsFromStore) ? rawProposalsFromStore : [];
+  const rawRabsFromStore = useSelector((s) => s.rab.listRabs);
+  const rawRabs = Array.isArray(rawRabsFromStore) ? rawRabsFromStore : [];
 
   // normalize backend objects to the shape used by this component
   const normProjects = rawProjects.map((p) => ({
@@ -77,16 +93,16 @@ const ProjectManagerDashboard = ({
     ...pr,
   }));
 
-  const normProposals = rawProposals.map((pf) => ({
+  const normProposals = Array.isArray(rawProposals) ? rawProposals.map((pf) => ({
     id: pf._id || pf.id,
     projectName: pf.projectName || pf.rabId?.projectId?.name || "",
     createdAt: pf.createdAt,
     total: pf.total,
     status: pf.status,
     ...pf,
-  }));
+  })) : [];
 
-  const normRabs = rawRabs.map((r) => ({
+  const normRabs = Array.isArray(rawRabs) ? rawRabs.map((r) => ({
     id: r._id || r.id,
     projectName: r.title || r.projectName || "",
     description: r.description || "",
@@ -99,27 +115,30 @@ const ProjectManagerDashboard = ({
     proposedPrice: r.proposedPrice,
     agreedPrice: r.agreedPrice,
     ...r,
-  }));
+  })) : [];
 
   // Expose data either from props (parent) or from store
 
-  // Fetch initial data if parent didn't provide them
+  // Fetch initial data - always fetch to ensure fresh data
   useEffect(() => {
-    if (!projects) dispatch(actionProject.fetchProjects());
-    if (!products) dispatch(actionProduct.fetchProduct());
-    if (typeof proposals === "undefined")
-      dispatch(actionProposal.fetchProposals());
-    if (!rabs) dispatch(actionRab.fetchRabs());
+    // Always fetch fresh data
+    dispatch(actionProject.fetchProjects());
+    dispatch(actionProduct.fetchProduct());
+    dispatch(actionProposal.fetchProposals());
+    dispatch(actionRab.fetchRabs());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers that dispatch to slices (used when parent doesn't pass handlers)
   const handleAddProject = async (payload) => {
-    if (onAddProject) return onAddProject(payload);
     try {
       const res = await dispatch(actionProject.createProject(payload)).unwrap();
+      showToast("Proyek berhasil ditambahkan", "success");
+      // Refresh data
+      dispatch(actionProject.fetchProjects());
       return res;
     } catch (err) {
       console.error("Failed to create project", err);
+      showToast("Gagal menambahkan proyek: " + (err.message || "Unknown error"), "error");
     }
   };
 
@@ -133,17 +152,21 @@ const ProjectManagerDashboard = ({
   // Use our handlers when parent didn't pass handlers (assigned after handlers defined)
 
   const handleUpdateProject = async (payload) => {
-    if (onUpdateProject) return onUpdateProject(payload);
     try {
+      console.log("Update payload:", payload);
       const res = await dispatch(actionProject.updateProject(payload)).unwrap();
+      showToast("Proyek berhasil diperbarui", "success");
+      // Refresh data
+      dispatch(actionProject.fetchProjects());
       return res;
     } catch (err) {
       console.error("Failed to update project", err);
+      console.error("Error response:", err.response?.data);
+      showToast("Gagal memperbarui proyek: " + (err.message || "Unknown error"), "error");
     }
   };
 
   const handleAddProposal = async (payload) => {
-    if (onAddProposal) return onAddProposal(payload);
     try {
       const res = await dispatch(
         actionProposal.createProposal(payload)
@@ -155,7 +178,6 @@ const ProjectManagerDashboard = ({
   };
 
   const handleUpdateProposal = async (payload) => {
-    if (onUpdateProposal) return onUpdateProposal(payload);
     try {
       const res = await dispatch(
         actionProposal.updateProposal(payload)
@@ -167,7 +189,6 @@ const ProjectManagerDashboard = ({
   };
 
   const handleSendProposal = async (id) => {
-    if (onSendProposal) return onSendProposal(id);
     try {
       // set status to sent
       const existing = rawProposals.find((p) => (p._id || p.id) === id);
@@ -222,7 +243,6 @@ const ProjectManagerDashboard = ({
   };
 
   const handleAddMaterialRequest = async (payload) => {
-    if (onAddMaterialRequest) return onAddMaterialRequest(payload);
     try {
       const res = await dispatch(actionOrder.createOrder(payload)).unwrap();
       return res;
@@ -231,19 +251,25 @@ const ProjectManagerDashboard = ({
     }
   };
 
-  // Fallback: wire prop handlers to our local handlers when parent didn't provide them
-  onAddProject = onAddProject || handleAddProject;
-  onUpdateProject = onUpdateProject || handleUpdateProject;
-  onAddProposal = onAddProposal || handleAddProposal;
-  onUpdateProposal = onUpdateProposal || handleUpdateProposal;
-  onSendProposal = onSendProposal || handleSendProposal;
-  onAddMaterialRequest = onAddMaterialRequest || handleAddMaterialRequest;
+  // Use final handlers - either from props or local
+  const finalAddProject = onAddProject || handleAddProject;
+  const finalUpdateProject = onUpdateProject || handleUpdateProject;
+  const finalAddProposal = onAddProposal || handleAddProposal;
+  const finalUpdateProposal = onUpdateProposal || handleUpdateProposal;
+  const finalSendProposal = onSendProposal || handleSendProposal;
+  const finalAddMaterialRequest = onAddMaterialRequest || handleAddMaterialRequest;
 
   const tabs = [
     { id: "projects", label: "Proyek Saya", icon: "🏗️" },
     { id: "materials", label: "Permintaan Material", icon: "📦" },
     { id: "rabs", label: "RAB / Penawaran", icon: "💼" },
   ];
+
+  // Handler untuk request material dari ProjectList
+  const handleRequestMaterial = () => {
+    // Pindah ke tab materials
+    setActiveTab("materials");
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -316,33 +342,55 @@ const ProjectManagerDashboard = ({
                       setProjectForm((p) => ({ ...p, budget: e.target.value }))
                     }
                   />
+                  <select
+                    className="border rounded p-2"
+                    value={projectForm.status}
+                    onChange={(e) =>
+                      setProjectForm((p) => ({ ...p, status: e.target.value }))
+                    }
+                  >
+                    <option value="planned">Planned</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button
                     className="px-3 py-2 bg-green-600 text-white rounded"
-                    onClick={() => {
+                    onClick={async () => {
                       const payload = {
                         ...projectForm,
-                        projectManagerId: user?.id,
+                        projectManagerId: user?.id || user?._id,
                       };
-                      if (editingProject?.id) {
-                        // existing project update
-                        if (onUpdateProject)
-                          onUpdateProject({ ...editingProject, ...payload });
-                      } else {
-                        if (onAddProject) onAddProject(payload);
+                      
+                      try {
+                        if (editingProject?.id) {
+                          // existing project update
+                          await finalUpdateProject({ 
+                            ...payload,
+                            id: editingProject.id 
+                          });
+                        } else {
+                          // create new project
+                          await finalAddProject(payload);
+                        }
+                        
+                        // Reset form after success
+                        setEditingProject(null);
+                        setProjectForm({
+                          name: "",
+                          location: "",
+                          description: "",
+                          projectManagerId: user?.id || user?._id,
+                          status: "planned",
+                          startDate: "",
+                          endDate: "",
+                          budget: "",
+                        });
+                      } catch (err) {
+                        console.error("Error saving project:", err);
                       }
-                      setEditingProject(null);
-                      setProjectForm({
-                        name: "",
-                        location: "",
-                        description: "",
-                        projectManagerId: user?.id,
-                        status: "planning",
-                        startDate: "",
-                        endDate: "",
-                        budget: "",
-                      });
                     }}
                   >
                     Simpan
@@ -367,23 +415,55 @@ const ProjectManagerDashboard = ({
                 Tambah Proyek
               </button>
             </div>
-            <ProjectList
-              projects={projects}
-              user={user}
-              onEditProject={(p) => {
-                setEditingProject(p || {});
-                setProjectForm({
-                  name: p?.name || "",
-                  location: p?.location || "",
-                  description: p?.description || "",
-                  projectManagerId: p?.projectManagerId || user?.id,
-                  status: p?.status || "planning",
-                  startDate: p?.startDate || "",
-                  endDate: p?.endDate || "",
-                  budget: p?.budget || "",
-                });
-              }}
-            />
+            
+            {/* Loading State */}
+            {projectsLoading && (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-2">⏳</div>
+                <p className="text-gray-600">Memuat data proyek...</p>
+              </div>
+            )}
+            
+            {/* Error State */}
+            {projectsError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-red-800">
+                  <strong>Error:</strong> {projectsError}
+                </p>
+                <button
+                  className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm"
+                  onClick={() => dispatch(actionProject.fetchProjects())}
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+            
+            {/* Project List */}
+            {!projectsLoading && !projectsError && (
+              <ProjectList
+                projects={projects}
+                user={user}
+                onEditProject={(p) => {
+                  setEditingProject(p || {});
+                  // Validate status - only use if it's a valid value
+                  const validStatuses = ["planned", "in-progress", "completed", "cancelled"];
+                  const validStatus = validStatuses.includes(p?.status) ? p.status : "planned";
+                  
+                  setProjectForm({
+                    name: p?.name || "",
+                    location: p?.location || "",
+                    description: p?.description || "",
+                    projectManagerId: p?.projectManagerId || user?.id,
+                    status: validStatus,
+                    startDate: formatDateForInput(p?.startDate) || "",
+                    endDate: formatDateForInput(p?.endDate) || "",
+                    budget: p?.budget || "",
+                  });
+                }}
+                onRequestMaterial={handleRequestMaterial}
+              />
+            )}
           </div>
         );
       case "materials":
@@ -393,7 +473,7 @@ const ProjectManagerDashboard = ({
             materials={materials}
             user={user}
             projects={projects}
-            onAddMaterialRequest={onAddMaterialRequest}
+            onAddMaterialRequest={finalAddMaterialRequest}
           />
         );
       case "rabs":
@@ -674,11 +754,11 @@ const ProjectManagerDashboard = ({
                         total: total,
                         note: proposalNote,
                       };
-                      if (onAddProposal) {
-                        const created = onAddProposal(payload);
+                      if (finalAddProposal) {
+                        const created = finalAddProposal(payload);
                         // optionally send immediately
-                        if (created && onSendProposal) {
-                          onSendProposal(created.id);
+                        if (created && finalSendProposal) {
+                          finalSendProposal(created.id);
                         }
                       }
                       // reset form
@@ -723,16 +803,16 @@ const ProjectManagerDashboard = ({
                           <button
                             className="px-3 py-1 bg-yellow-500 text-white rounded"
                             onClick={() =>
-                              onUpdateProposal({ ...p, status: "approved" })
+                              finalUpdateProposal({ ...p, status: "approved" })
                             }
                           >
                             Tandai Disetujui
                           </button>
                         )}
-                        {onSendProposal && p.status !== "sent" && (
+                        {finalSendProposal && p.status !== "sent" && (
                           <button
                             className="px-3 py-1 bg-blue-600 text-white rounded"
-                            onClick={() => onSendProposal(p.id)}
+                            onClick={() => finalSendProposal(p.id)}
                           >
                             Kirim
                           </button>
@@ -770,6 +850,23 @@ const ProjectManagerDashboard = ({
         return <ProjectList projects={projects} user={user} />;
     }
   };
+
+  // Show loading if user not loaded yet
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 sm:p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⏳</div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Memuat Dashboard...
+          </h3>
+          <p className="text-gray-600">
+            Mohon tunggu sebentar
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
