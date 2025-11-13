@@ -55,6 +55,7 @@ const initialData = {
       category: "Aspal",
       price: 500000,
       unit: "ton",
+      stock: 100,
       description: "Material aspal berkualitas tinggi untuk pembangunan jalan",
     },
     {
@@ -63,6 +64,7 @@ const initialData = {
       category: "Beton",
       price: 800000,
       unit: "m³",
+      stock: 100,
       description: "Beton siap pakai dengan kualitas terjamin",
     },
     {
@@ -71,6 +73,7 @@ const initialData = {
       category: "Beton",
       price: 1200000,
       unit: "unit",
+      stock: 50,
       description: "Beton precast untuk berbagai keperluan konstruksi",
     },
     {
@@ -79,9 +82,29 @@ const initialData = {
       category: "Agregat",
       price: 300000,
       unit: "m³",
+      stock: 100,
       description: "Material agregat untuk campuran beton",
     },
+    {
+      id: 5,
+      name: "Heavy Equipment Metal",
+      category: "Lainnya",
+      price: 627000000,
+      unit: "unit",
+      stock: 5,
+      description: "mesin atau kendaraan berukuran besar yang dirancang khusus untuk melakukan pekerjaan berat, seperti konstruksi, pertambangan, dan pemindahan material",
+    },
+    {
+      id: 6,
+      category: "Lainnya",
+      name: "Bata Ringan",
+      price: 1500000,
+      unit: "m³",
+      stock: 200,
+      description: "bahan bangunan yang lebih ringan dari bata konvensional, terbuat dari campuran semen, pasir silika, kapur, aluminium powder, dan air, yang menghasilkan gelembung udara untuk mengurangi beratnya",
+    }
   ],
+
   projects: [
     {
       id: 1,
@@ -141,7 +164,9 @@ async function seed() {
         category: p.category,
         price: p.price,
         unit: p.unit,
+        stock: p.stock,
         description: p.description,
+        status: p.status || "active",
       }))
     );
     console.log("Inserted products:", createdProducts.length);

@@ -5,6 +5,7 @@ const createProductSchema = Joi.object({
   category: Joi.string().allow(null, ""),
   price: Joi.number().min(0).required(),
   unit: Joi.string().required(),
+  stock: Joi.number().min(0).default(0),
   description: Joi.string().allow(null, ""),
   status: Joi.string().valid("active", "inactive").default("active"),
   metadata: Joi.object().unknown(true).optional(), // fleksibel untuk field tambahan
@@ -15,6 +16,7 @@ const updateProductSchema = Joi.object({
   category: Joi.string().allow(null, ""),
   price: Joi.number().min(0),
   unit: Joi.string(),
+  stock: Joi.number().min(0),
   description: Joi.string().allow(null, ""),
   status: Joi.string().valid("active", "inactive"),
   metadata: Joi.object().unknown(true),

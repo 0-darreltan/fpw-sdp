@@ -192,6 +192,34 @@ const DetailCatalog = () => {
                 </div>
               </div>
 
+              {/* Stock */}
+              {product.stock !== undefined && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Stock Available
+                  </p>
+                  <div className="flex items-center">
+                    <span className="text-2xl font-semibold text-gray-900 dark:text-white">
+                      {product.stock.toLocaleString("id-ID")}
+                    </span>
+                    {product.unit && (
+                      <span className="text-lg text-gray-500 dark:text-gray-400 ml-2">
+                        {product.unit}
+                      </span>
+                    )}
+                    {product.stock > 0 ? (
+                      <span className="ml-3 inline-flex items-center bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-green-900 dark:text-green-300">
+                        In Stock
+                      </span>
+                    ) : (
+                      <span className="ml-3 inline-flex items-center bg-red-100 text-red-800 text-xs font-medium px-2 py-0.5 rounded dark:bg-red-900 dark:text-red-300">
+                        Out of Stock
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Description */}
               {product.description && (
                 <div className="mb-6">
