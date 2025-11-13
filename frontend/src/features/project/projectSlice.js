@@ -18,7 +18,8 @@ const createProject = createAsyncThunk(
   }
 );
 const updateProject = createAsyncThunk("projects/update", async (data) => {
-  const response = await api.put(`/projects/${data.id}`, data);
+  const { id, ...projectData } = data;
+  const response = await api.put(`/projects/${id}`, projectData);
   return response.data;
 });
 const deleteProject = createAsyncThunk("projects/delete", async (id) => {
@@ -46,7 +47,8 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjects.fulfilled, (state, action) => {
         state.loading = false;
-        state.listProjects = action.payload;
+        // Handle backend response format { success: true, data: [...] }
+        state.listProjects = action.payload?.data || action.payload || [];
       })
       .addCase(fetchProjects.rejected, (state, action) => {
         state.loading = false;
@@ -60,7 +62,8 @@ const projectSlice = createSlice({
       })
       .addCase(fetchProjectById.fulfilled, (state, action) => {
         state.loading = false;
-        const project = action.payload?.result || action.payload;
+        // Handle backend response format { success: true, data: {...} }
+        const project = action.payload?.data || action.payload?.result || action.payload;
         state.oneProject = project || {};
       })
       .addCase(fetchProjectById.rejected, (state, action) => {
@@ -75,8 +78,11 @@ const projectSlice = createSlice({
       })
       .addCase(createProject.fulfilled, (state, action) => {
         state.loading = false;
-        const created = action.payload?.result || action.payload;
-        state.listProjects.push(created);
+        // Handle backend response format { success: true, data: {...} }
+        const created = action.payload?.data || action.payload?.result || action.payload;
+        if (created) {
+          state.listProjects.push(created);
+        }
       })
       .addCase(createProject.rejected, (state, action) => {
         state.loading = false;
@@ -90,7 +96,8 @@ const projectSlice = createSlice({
       })
       .addCase(updateProject.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = action.payload?.result || action.payload;
+        // Handle backend response format { success: true, data: {...} }
+        const updated = action.payload?.data || action.payload?.result || action.payload;
         if (!updated || !updated._id) return;
 
         const updatedId = updated._id;
