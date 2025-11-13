@@ -20,6 +20,15 @@ const AdminDashboard = ({ data }) => {
     location.pathname.includes("/admin/products/create") ||
     location.pathname.includes("/admin/products/edit");
 
+  // ✅ Handler untuk navigasi tab - perbaiki stuck issue
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Jika sedang di nested route, navigate ke /admin dulu
+    if (isNestedRoute) {
+      navigate("/admin");
+    }
+  };
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -147,10 +156,7 @@ const AdminDashboard = ({ data }) => {
             {/* Dashboard */}
             <li>
               <button
-                onClick={() => {
-                  setActiveTab("dashboard");
-                  navigate("/admin");
-                }}
+                onClick={() => handleTabChange("dashboard")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
                   activeTab === "dashboard" && !isNestedRoute
                     ? "bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-semibold shadow-lg"
@@ -171,7 +177,7 @@ const AdminDashboard = ({ data }) => {
             {/* Kelola Pesanan */}
             <li>
               <button
-                onClick={() => setActiveTab("orders")}
+                onClick={() => handleTabChange("orders")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
                   activeTab === "orders"
                     ? "bg-gray-700 text-white"
@@ -186,7 +192,7 @@ const AdminDashboard = ({ data }) => {
             {/* Kelola User */}
             <li>
               <button
-                onClick={() => setActiveTab("users")}
+                onClick={() => handleTabChange("users")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
                   activeTab === "users"
                     ? "bg-gray-700 text-white"
@@ -201,7 +207,7 @@ const AdminDashboard = ({ data }) => {
             {/* Kelola Produk */}
             <li>
               <button
-                onClick={() => setActiveTab("products")}
+                onClick={() => handleTabChange("products")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
                   activeTab === "products" || isNestedRoute
                     ? "bg-gray-700 text-white"
@@ -216,7 +222,7 @@ const AdminDashboard = ({ data }) => {
             {/* Kelola Material */}
             <li>
               <button
-                onClick={() => setActiveTab("materials")}
+                onClick={() => handleTabChange("materials")}
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
                   activeTab === "materials"
                     ? "bg-gray-700 text-white"

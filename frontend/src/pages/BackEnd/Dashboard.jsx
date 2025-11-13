@@ -1,33 +1,52 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { actionProduct } from "../../features/product/productSlice";
+import { actionUser } from "../../features/users/userSlice";
+import { actionOrder } from "../../features/order/orderSlice";
+import { actionProject } from "../../features/project/projectSlice";
 
 const Dashboard = ({ data }) => {
+  const dispatch = useDispatch();
+  
+  const { listProducts } = useSelector((state) => state.product);
+  const { listUsers } = useSelector((state) => state.users);
+  const { listOrders } = useSelector((state) => state.order);
+  const { listProjects } = useSelector((state) => state.project);
+
+  useEffect(() => {
+    dispatch(actionProduct.fetchProduct());
+    dispatch(actionUser.fetchUser());
+    dispatch(actionOrder.fetchOrder());
+    dispatch(actionProject.fetchProject());
+  }, [dispatch]);
+
   const stats = [
     {
       id: "orders",
       label: "Total Pesanan",
       icon: "📋",
-      count: data?.orders?.length || 0,
+      count: listOrders?.length || 0,
       color: "blue",
     },
     {
       id: "users",
       label: "Total User",
       icon: "👥",
-      count: data?.users?.length || 0,
+      count: listUsers?.length || 0,
       color: "green",
     },
     {
       id: "products",
       label: "Total Produk",
       icon: "📦",
-      count: data?.products?.length || 0,
+      count: listProducts?.length || 0,
       color: "purple",
     },
     {
       id: "projects",
       label: "Proyek Aktif",
       icon: "🏗️",
-      count: data?.projects?.length || 0,
+      count: listProjects?.filter(p => p.status === "active")?.length || 0,
       color: "orange",
     },
   ];
