@@ -1,168 +1,110 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { useLocation } from "react-router";
 
 const CheckoutPage = () => {
-  const [loading, setLoading] = useState(false);
   const [snapReady, setSnapReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [snapToken, setSnapToken] = useState(null);
+  const location = useLocation();
+  const { order } = location.state || {};
 
-  // Demo data (ganti dengan useSelector dan useLocation di project asli)
-  const [order, setOrder] = useState({
-    total: 150000,
-    items: [
-      { name: "Product 1", price: 100000 },
-      { name: "Product 2", price: 50000 },
-    ],
-  });
+  console.log(order);
 
-  const [currUsers, setCurrUsers] = useState({
-    user: {
-      name: "John Doe",
-      email: "john@example.com",
-    },
-  });
+  const { oneUsers } = useSelector((state) => state.users);
 
-  // Client key (ganti dengan env variable di project asli)
-  const MIDTRANS_CLIENT_KEY = "SB-Mid-client-xxxxxxxxxxxxx";
-  const API_URL = "http://localhost:5000/api/payment/create-transaction";
+  useEffect(() => {
+    setCurrUsers(oneUsers);
+  }, [oneUsers]);
 
+  const [currUsers, setCurrUsers] = useState({});
   // 🔹 Load script Snap Midtrans
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-    script.setAttribute("data-client-key", MIDTRANS_CLIENT_KEY);
+    script.setAttribute(
+      "data-client-key",
+      import.meta.env.VITE_MIDTRANS_CLIENT_KEY
+    );
     script.onload = () => setSnapReady(true);
     document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
   }, []);
 
-  // 🔹 Proses Pembayaran
-  const handlePay = async () => {
-    if (!snapReady) {
-      alert("Midtrans belum siap. Tunggu sebentar...");
-      return;
-    }
-
+  const handlePayment = async () => {
     try {
       setLoading(true);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
-      });
+      // Kirim data transaksi ke backend
+      const res = await fetch(
+        "http://localhost:3000/api/payments/create-transaction",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: "ORDER-" + Date.now(),
+            grossAmount: order.total,
+            customer: {
+              name: "customer1",
+              email: "john@example.com",
+              phone: "081234567890",
+            },
+            items: order.items,
+          }),
+        }
+      );
 
       const data = await res.json();
+      console.log(data.token);
+      setSnapToken(data.token);
+      setLoading(false);
 
-      if (data.token) {
+      if (data.token && window.snap) {
         window.snap.pay(data.token, {
           onSuccess: (result) => {
-            alert("✅ Pembayaran berhasil!");
-            console.log(result);
-            // navigate("/customer"); // Uncomment di project asli
+            console.log("✅ Payment success:", result);
+            alert("Pembayaran berhasil!");
           },
           onPending: (result) => {
-            alert("🕒 Menunggu pembayaran...");
-            console.log(result);
+            console.log("⏳ Payment pending:", result);
+            alert("Menunggu konfirmasi pembayaran.");
           },
-          onError: (result) => {
-            alert("❌ Terjadi kesalahan pembayaran!");
-            console.log(result);
+          onError: (error) => {
+            console.error("❌ Payment error:", error);
+            alert("Terjadi kesalahan pembayaran.");
           },
           onClose: () => {
-            alert("⚠ Kamu menutup popup tanpa menyelesaikan pembayaran");
+            console.log("❎ Payment popup closed");
           },
         });
-      } else {
-        alert("Gagal mendapatkan token dari server");
       }
     } catch (err) {
       console.error(err);
-      alert("Gagal memproses pembayaran: " + err.message);
-    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6">
-      <div className="bg-white shadow-md rounded-lg p-6 w-full max-w-lg">
-        <h1 className="text-2xl font-bold mb-4 text-center">Checkout</h1>
+    <div className="max-w-lg mx-auto p-6 bg-white rounded-2xl shadow-lg">
+      <h2 className="text-xl font-bold mb-4">Checkout</h2>
 
-        {/* User Info */}
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <p className="mb-2 text-gray-700">
-            <span className="font-semibold">Nama:</span> {currUsers?.user?.name}
-          </p>
-          <p className="mb-2 text-gray-700">
-            <span className="font-semibold">Email:</span>{" "}
-            {currUsers?.user?.email}
-          </p>
-        </div>
-
-        {/* Order Items */}
-        <div className="mb-4">
-          <h3 className="font-semibold text-lg mb-2">Detail Pesanan:</h3>
-          <div className="space-y-2">
-            {order?.items?.map((item, idx) => (
-              <div key={idx} className="flex justify-between text-gray-600">
-                <span>{item.name}</span>
-                <span>Rp {item.price?.toLocaleString("id-ID")}</span>
-              </div>
-            ))}
-          </div>
-          <div className="border-t mt-3 pt-3">
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total:</span>
-              <span className="text-blue-600">
-                Rp {order?.total?.toLocaleString("id-ID")}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Info */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-blue-700 text-sm text-center">
-            {snapReady
-              ? "✓ Midtrans siap. Klik tombol untuk melanjutkan pembayaran."
-              : "⏳ Memuat Midtrans..."}
-          </p>
-        </div>
-
-        {/* Pay Button */}
-        <button
-          onClick={handlePay}
-          disabled={loading || !snapReady}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-        >
-          {loading ? "⏳ Memproses..." : "💳 Bayar Sekarang"}
-        </button>
-
-        {/* Info */}
-        <p className="text-gray-400 text-xs mt-4 text-center">
-          Environment: Sandbox (Testing)
+      <div className="border p-4 rounded-lg mb-4">
+        <p>
+          <strong>Customer:</strong> customer1
+        </p>
+        <p>
+          <strong>Email:</strong> john@example.com
+        </p>
+        <p>
+          <strong>Total:</strong> Rp {order.total.toLocaleString()}
         </p>
       </div>
 
-      {/* Demo Controls - Remove di production */}
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-lg w-full">
-        <p className="text-yellow-800 text-sm font-semibold mb-2">
-          🔧 Demo Controls (Hapus di production):
-        </p>
-        <div className="space-y-2">
-          <input
-            type="text"
-            placeholder="Edit Client Key"
-            className="w-full px-3 py-2 border rounded text-sm"
-            defaultValue={MIDTRANS_CLIENT_KEY}
-          />
-          <p className="text-xs text-yellow-700">
-            Ganti dengan: import.meta.env.VITE_MIDTRANS_CLIENT_KEY
-          </p>
-        </div>
-      </div>
+      <button
+        onClick={handlePayment}
+        disabled={!snapReady || loading}
+        className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+      >
+        {loading ? "Processing..." : "Bayar Sekarang"}
+      </button>
     </div>
   );
 };

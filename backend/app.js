@@ -56,6 +56,10 @@ const {
   webhookRouter,
 } = require("./src/routes");
 
+app.get("/", (req, res) => {
+  res.send("FPW + SDP Backend is running!");
+});
+
 app.use("/api/users", userRouter);
 app.use("/api/rabs", rabRouter);
 app.use("/api/proposals", proposalRouter);

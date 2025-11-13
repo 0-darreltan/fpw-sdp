@@ -3,6 +3,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
 import { useNavigate } from "react-router";
+import { useSelector } from "react-redux";
 
 // ✅ Validation schema dengan Joi
 const orderSchema = Joi.object({
@@ -49,6 +50,8 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState("");
+
+  const { currUsers } = useSelector((state) => state.users);
 
   const {
     register,
@@ -118,12 +121,14 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
       items: watchItems,
       total: calculateTotal(),
       customer: {
-        id: user?.id || user?._id,
-        name: user?.name,
-        email: user?.email,
-        phone: user?.phone,
+        username: currUsers?.username,
+        name: currUsers?.name,
+        email: currUsers?.email,
+        phone: currUsers?.phone,
       },
     };
+
+    console.log(orderData);
 
     // Navigasi ke halaman checkout
     navigate("/checkout", { state: { order: orderData } });
@@ -355,8 +360,8 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="0"
-                min="0.1"
-                step="0.1"
+                min="1"
+                step="1"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -431,8 +436,8 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
                           <input
                             {...register(`items.${index}.quantity`)}
                             type="number"
-                            min="0.1"
-                            step="0.1"
+                            min="1"
+                            step="1"
                             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
                               errors.items?.[index]?.quantity
                                 ? "border-red-500 focus:ring-red-500"
