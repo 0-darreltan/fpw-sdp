@@ -47,7 +47,7 @@ const createProduct = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
 
-    const { name, category, price, unit, description, status, metadata } =
+    const { name, category, price, unit, stock, description, status, metadata } =
       req.body;
 
     const product = new Product({
@@ -55,6 +55,7 @@ const createProduct = async (req, res) => {
       category,
       price,
       unit,
+      stock,
       description,
       status: status || "active",
       metadata,

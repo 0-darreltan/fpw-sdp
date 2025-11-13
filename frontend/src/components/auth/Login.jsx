@@ -352,66 +352,6 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Divider */}
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-3 text-gray-500">
-                Atau masuk dengan
-              </span>
-            </div>
-          </div>
-
-          {/* Social Login Buttons - New Design */}
-          <div className="flex flex-col gap-4">
-            <button
-              onClick={() => console.log("Google login")}
-              className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-            >
-              <svg
-                className="w-5 h-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 2.25C6.507 2.25 2.25 6.507 2.25 12S6.507 21.75 12 21.75 21.75 17.493 21.75 12 17.493 2.25 12 2.25zm0 16.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"
-                />
-              </svg>
-              <span className="text-gray-700 font-semibold">
-                Masuk dengan Google
-              </span>
-            </button>
-            <button
-              onClick={() => console.log("Facebook login")}
-              className="flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-            >
-              <svg
-                className="w-5 h-5"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 2.25C6.507 2.25 2.25 6.507 2.25 12S6.507 21.75 12 21.75 21.75 17.493 21.75 12 17.493 2.25 12 2.25zm0 16.5a4.5 4.5 0 110-9 4.5 4.5 0 010 9z"
-                />
-              </svg>
-              <span className="text-gray-700 font-semibold">
-                Masuk dengan Facebook
-              </span>
-            </button>
-          </div>
-
           {/* Footer - New Design */}
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">

@@ -80,6 +80,7 @@ const CreatedProduct = () => {
       name: data.name,
       category: data.category,
       price: parseFloat(data.price) || 0,
+      stock: 0, // Default stock 0, will be managed in Material Management
       unit: data.unit === "other" ? data.unitOther : data.unit,
       description: data.description || "",
       status: data.status || "active",

@@ -6,6 +6,7 @@ const ProductSchema = new mongoose.Schema(
     category: { type: String },
     price: { type: Number },
     unit: { type: String },
+    stock: { type: Number },
     description: { type: String },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     metadata: { type: mongoose.Schema.Types.Mixed },

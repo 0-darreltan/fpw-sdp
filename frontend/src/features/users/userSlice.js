@@ -247,6 +247,7 @@ const userSlice = createSlice({
 });
 
 export const actionUser = {
+  fetchUser: fetchUsers,
   fetchUsers,
   fetchUserById,
   createUser,

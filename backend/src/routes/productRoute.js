@@ -11,8 +11,11 @@ const {
 const authMiddleware = require("../middlewares/authMiddleware");
 const { cekAdmin } = require("../middlewares/roleMiddleware");
 
-router.get("/", authMiddleware, getProduct);
-router.get("/:id", authMiddleware, getProductById);
+// Public routes - no authentication required for viewing products
+router.get("/", getProduct);
+router.get("/:id", getProductById);
+
+// Protected routes - require admin authentication
 router.post("/", authMiddleware, cekAdmin, createProduct);
 router.put("/:id", authMiddleware, cekAdmin, updateProduct);
 router.delete("/:id", authMiddleware, cekAdmin, deleteProduct);

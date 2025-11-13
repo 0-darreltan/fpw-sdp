@@ -141,6 +141,7 @@ const orderSlice = createSlice({
 });
 
 export const actionOrder = {
+  fetchOrder: fetchOrders, // Alias for Dashboard compatibility
   fetchOrders,
   fetchOrderById,
   createOrder,

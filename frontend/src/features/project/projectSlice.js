@@ -145,6 +145,7 @@ const projectSlice = createSlice({
 });
 
 export const actionProject = {
+  fetchProject: fetchProjects, // Alias for Dashboard compatibility
   fetchProjects,
   fetchProjectById,
   createProject,
