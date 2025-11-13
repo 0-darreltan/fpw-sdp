@@ -1,20 +1,27 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import MaterialRequest from "../../components/materials/MaterialRequest";
+import { actionProject } from "../../features/project/projectSlice";
+import { actionProduct } from "../../features/product/productSlice";
+import { actionProposal } from "../../features/proposal/proposalSlice";
+import { actionOrder } from "../../features/order/orderSlice";
+import { actionRab } from "../../features/RAB/rabSlice";
+import api from "../../features/api";
 
 const ProjectManagerDashboard = ({
   user,
   projects,
   products,
-  // materials = [],
-  // rabs = [],
-  // proposals = [],
-  // onAddProposal,
-  // onUpdateProposal,
-  // onSendProposal,
-  // onUpdateRAB,
-  // onAddProject,
-  // onUpdateProject,
-  // onAddMaterialRequest,
+  materials,
+  rabs,
+  proposals,
+  onAddProposal,
+  onUpdateProposal,
+  onSendProposal,
+  onUpdateRAB,
+  onAddProject,
+  onUpdateProject,
+  onAddMaterialRequest,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
 
@@ -37,6 +44,200 @@ const ProjectManagerDashboard = ({
     endDate: "",
     budget: "",
   });
+
+  // ---- Redux connections (only used when parent doesn't pass props) ----
+  const dispatch = useDispatch();
+
+  const storeUser = useSelector((s) => s.users.currUsers?.user) || null;
+  user = user || storeUser;
+  const rawProjects = useSelector((s) => s.project.listProjects) || [];
+  const rawProducts = useSelector((s) => s.product.listProducts) || [];
+  const rawProposals = useSelector((s) => s.proposal.listProposals) || [];
+  const rawRabs = useSelector((s) => s.rab.listRabs) || [];
+
+  // normalize backend objects to the shape used by this component
+  const normProjects = rawProjects.map((p) => ({
+    id: p._id || p.id,
+    name: p.name,
+    location: p.location,
+    description: p.description,
+    projectManagerId:
+      p.projectManagerId && (p.projectManagerId._id || p.projectManagerId),
+    status: p.status,
+    startDate: p.startDate,
+    endDate: p.endDate,
+    budget: p.budget,
+  }));
+
+  const normProducts = rawProducts.map((pr) => ({
+    id: pr._id || pr.id,
+    name: pr.name,
+    price: pr.price ?? pr.unitPrice ?? 0,
+    unit: pr.unit || "pcs",
+    ...pr,
+  }));
+
+  const normProposals = rawProposals.map((pf) => ({
+    id: pf._id || pf.id,
+    projectName: pf.projectName || pf.rabId?.projectId?.name || "",
+    createdAt: pf.createdAt,
+    total: pf.total,
+    status: pf.status,
+    ...pf,
+  }));
+
+  const normRabs = rawRabs.map((r) => ({
+    id: r._id || r.id,
+    projectName: r.title || r.projectName || "",
+    description: r.description || "",
+    customerId: r.customerId && (r.customerId._id || r.customerId),
+    location: r.location || "",
+    items: r.items || [],
+    totalEstimate: r.totalEstimated || r.totalEstimate || 0,
+    status: r.status,
+    createdAt: r.createdAt,
+    proposedPrice: r.proposedPrice,
+    agreedPrice: r.agreedPrice,
+    ...r,
+  }));
+
+  // Expose data either from props (parent) or from store
+
+  // Fetch initial data if parent didn't provide them
+  useEffect(() => {
+    if (!projects) dispatch(actionProject.fetchProjects());
+    if (!products) dispatch(actionProduct.fetchProduct());
+    if (typeof proposals === "undefined")
+      dispatch(actionProposal.fetchProposals());
+    if (!rabs) dispatch(actionRab.fetchRabs());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handlers that dispatch to slices (used when parent doesn't pass handlers)
+  const handleAddProject = async (payload) => {
+    if (onAddProject) return onAddProject(payload);
+    try {
+      const res = await dispatch(actionProject.createProject(payload)).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to create project", err);
+    }
+  };
+
+  // If parent didn't pass props, fallback the param variables to our normalized data
+  projects = projects || normProjects;
+  products = products || normProducts;
+  proposals = typeof proposals !== "undefined" ? proposals : normProposals;
+  materials = typeof materials !== "undefined" ? materials : normProducts;
+  rabs = rabs || normRabs;
+
+  // Use our handlers when parent didn't pass handlers (assigned after handlers defined)
+
+  const handleUpdateProject = async (payload) => {
+    if (onUpdateProject) return onUpdateProject(payload);
+    try {
+      const res = await dispatch(actionProject.updateProject(payload)).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to update project", err);
+    }
+  };
+
+  const handleAddProposal = async (payload) => {
+    if (onAddProposal) return onAddProposal(payload);
+    try {
+      const res = await dispatch(
+        actionProposal.createProposal(payload)
+      ).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to create proposal", err);
+    }
+  };
+
+  const handleUpdateProposal = async (payload) => {
+    if (onUpdateProposal) return onUpdateProposal(payload);
+    try {
+      const res = await dispatch(
+        actionProposal.updateProposal(payload)
+      ).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to update proposal", err);
+    }
+  };
+
+  const handleSendProposal = async (id) => {
+    if (onSendProposal) return onSendProposal(id);
+    try {
+      // set status to sent
+      const existing = rawProposals.find((p) => (p._id || p.id) === id);
+      if (!existing) return;
+      const payload = { ...(existing || {}), status: "sent" };
+      const res = await dispatch(
+        actionProposal.updateProposal(payload)
+      ).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to send proposal", err);
+    }
+  };
+
+  // toast local state
+  const [toast, setToast] = useState({
+    show: false,
+    message: "",
+    type: "info",
+  });
+  const showToast = (message, type = "info", timeout = 3000) => {
+    setToast({ show: true, message, type });
+    setTimeout(
+      () => setToast({ show: false, message: "", type: "info" }),
+      timeout
+    );
+  };
+
+  const handleAcceptProposal = async (id) => {
+    try {
+      const res = await api.post(`/users/accept-proposal`, { proposalId: id });
+      showToast("Proposal berhasil disetujui", "success");
+      // refresh proposals
+      dispatch(actionProposal.fetchProposals());
+      return res.data;
+    } catch (err) {
+      console.error("accept error", err);
+      showToast("Gagal menyetujui proposal", "error");
+    }
+  };
+
+  const handleRejectProposal = async (id) => {
+    try {
+      const res = await api.post(`/users/reject-proposal`, { proposalId: id });
+      showToast("Proposal berhasil ditolak", "success");
+      dispatch(actionProposal.fetchProposals());
+      return res.data;
+    } catch (err) {
+      console.error("reject error", err);
+      showToast("Gagal menolak proposal", "error");
+    }
+  };
+
+  const handleAddMaterialRequest = async (payload) => {
+    if (onAddMaterialRequest) return onAddMaterialRequest(payload);
+    try {
+      const res = await dispatch(actionOrder.createOrder(payload)).unwrap();
+      return res;
+    } catch (err) {
+      console.error("Failed to create material request", err);
+    }
+  };
+
+  // Fallback: wire prop handlers to our local handlers when parent didn't provide them
+  onAddProject = onAddProject || handleAddProject;
+  onUpdateProject = onUpdateProject || handleUpdateProject;
+  onAddProposal = onAddProposal || handleAddProposal;
+  onUpdateProposal = onUpdateProposal || handleUpdateProposal;
+  onSendProposal = onSendProposal || handleSendProposal;
+  onAddMaterialRequest = onAddMaterialRequest || handleAddMaterialRequest;
 
   const tabs = [
     { id: "projects", label: "Proyek Saya", icon: "🏗️" },
@@ -536,6 +737,26 @@ const ProjectManagerDashboard = ({
                             Kirim
                           </button>
                         )}
+                        {/* Accept / Reject - only visible to customer or admin */}
+                        {(user?.role === "Administrator" ||
+                          ((user?.id || user?._id) &&
+                            (user?.id || user?._id) ===
+                              (p.customerId?._id || p.customerId))) && (
+                          <>
+                            <button
+                              className="px-3 py-1 bg-green-600 text-white rounded"
+                              onClick={() => handleAcceptProposal(p.id)}
+                            >
+                              Setujui
+                            </button>
+                            <button
+                              className="px-3 py-1 bg-red-600 text-white rounded"
+                              onClick={() => handleRejectProposal(p.id)}
+                            >
+                              Tolak
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -552,6 +773,20 @@ const ProjectManagerDashboard = ({
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {/* toast */}
+      {toast.show && (
+        <div
+          className={`fixed right-6 top-6 z-50 p-3 rounded shadow-md ${
+            toast.type === "success"
+              ? "bg-green-100 text-green-800"
+              : toast.type === "error"
+              ? "bg-red-100 text-red-800"
+              : "bg-blue-100 text-blue-800"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">

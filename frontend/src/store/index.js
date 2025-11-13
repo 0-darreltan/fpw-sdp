@@ -7,6 +7,7 @@ import projectReducer from "../features/project/projectSlice";
 import productReducer from "../features/product/productSlice";
 import orderReducer from "../features/order/orderSlice";
 import paymentReducer from "../features/payment/paymentSlice";
+import rabReducer from "../features/RAB/rabSlice";
 
 const persistConfig = {
   key: "user",
@@ -19,6 +20,7 @@ const persistProjectReducer = persistReducer(persistConfig, projectReducer);
 const persistProductReducer = persistReducer(persistConfig, productReducer);
 const persistOrderReducer = persistReducer(persistConfig, orderReducer);
 const persistPaymentReducer = persistReducer(persistConfig, paymentReducer);
+const persistRabReducer = persistReducer(persistConfig, rabReducer);
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +30,7 @@ export const store = configureStore({
     product: persistProductReducer,
     order: persistOrderReducer,
     payment: persistPaymentReducer,
+    rab: persistRabReducer,
   },
 });
 
