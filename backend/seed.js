@@ -39,7 +39,7 @@ const initialData = {
     {
       id: 3,
       username: "pm1",
-      password: "pm123",
+      password: "12345678",
       role: "project_manager",
       name: "Jane Smith",
       email: "jane@agungbeton.com",
@@ -92,7 +92,8 @@ const initialData = {
       price: 627000000,
       unit: "unit",
       stock: 5,
-      description: "mesin atau kendaraan berukuran besar yang dirancang khusus untuk melakukan pekerjaan berat, seperti konstruksi, pertambangan, dan pemindahan material",
+      description:
+        "mesin atau kendaraan berukuran besar yang dirancang khusus untuk melakukan pekerjaan berat, seperti konstruksi, pertambangan, dan pemindahan material",
     },
     {
       id: 6,
@@ -101,8 +102,9 @@ const initialData = {
       price: 1500000,
       unit: "m³",
       stock: 200,
-      description: "bahan bangunan yang lebih ringan dari bata konvensional, terbuat dari campuran semen, pasir silika, kapur, aluminium powder, dan air, yang menghasilkan gelembung udara untuk mengurangi beratnya",
-    }
+      description:
+        "bahan bangunan yang lebih ringan dari bata konvensional, terbuat dari campuran semen, pasir silika, kapur, aluminium powder, dan air, yang menghasilkan gelembung udara untuk mengurangi beratnya",
+    },
   ],
 
   projects: [

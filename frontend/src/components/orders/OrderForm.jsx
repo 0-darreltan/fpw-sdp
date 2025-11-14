@@ -50,6 +50,7 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [itemsLoaded, setItemsLoaded] = useState(false);
 
   const { currUsers } = useSelector((state) => state.users);
 
@@ -79,7 +80,10 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
 
   // ✅ Load initial items from catalog
   useEffect(() => {
-    if (initialItems && initialItems.length > 0) {
+    if (initialItems && initialItems.length > 0 && !itemsLoaded) {
+      // Clear existing items first
+      setValue("items", []);
+
       initialItems.forEach((item) => {
         const product = products.find(
           (p) => p.id === item.productId || p._id === item.productId
@@ -95,8 +99,10 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
           });
         }
       });
+
+      setItemsLoaded(true); // ✅ Mark as loaded
     }
-  }, [initialItems, products, append]);
+  }, [initialItems, products, append, setValue, itemsLoaded]);
 
   const watchItems = watch("items");
 

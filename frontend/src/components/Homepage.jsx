@@ -44,7 +44,7 @@ const Homepage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center w-full sm:w-auto px-4">
             <button
-              onClick={() => navigate("/customer")}
+              onClick={() => navigate("/login")}
               className="bg-red-600 text-white px-6 md:px-8 py-3 rounded-lg font-bold hover:bg-red-700 transition-colors duration-200 w-full sm:w-auto"
             >
               Mulai Proyek

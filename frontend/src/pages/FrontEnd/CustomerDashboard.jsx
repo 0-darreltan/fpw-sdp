@@ -28,19 +28,36 @@ const CustomerDashboard = ({ onAddOrder }) => {
   ];
 
   const handleAddFromCatalog = (product) => {
-    const id = product.id ?? product._id;
+    const productId = product.id ?? product._id;
+
     setCartItems((prev) => {
-      const existing = prev.find((p) => p.productId === id);
-      if (existing) {
-        return prev.map((p) =>
-          p.productId === id ? { ...p, quantity: p.quantity + 1 } : p
-        );
+      // Cari item yang sudah ada berdasarkan productId
+      const existingIndex = prev.findIndex(
+        (item) => item.productId === productId
+      );
+
+      if (existingIndex !== -1) {
+        // Jika sudah ada, update quantity
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + 1,
+        };
+        return updated;
       }
+
+      // Jika belum ada, tambahkan item baru
       return [
         ...prev,
-        { productId: id, quantity: 1, id: Date.now(), meta: product },
+        {
+          id: productId, // Gunakan productId sebagai id cart item
+          productId: productId,
+          quantity: 1,
+          meta: product,
+        },
       ];
     });
+
     setActiveTab("order");
   };
 
