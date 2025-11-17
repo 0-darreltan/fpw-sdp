@@ -3,7 +3,7 @@ import {
   createRoutesFromElements,
   Route,
   RouterProvider,
-} from "react-router";
+} from "react-router-dom";
 import ErrorPage from "./components/ErrorPage";
 import FrontendLayoutPage from "./pages/FrontEnd/FrontendLayoutPage";
 import Login from "./components/auth/Login";

@@ -6,6 +6,7 @@ const RAB = require('./RAB');
 const Proposal = require('./Proposal');
 const Cart = require("./Cart");
 const CheckOut = require("./CheckOut");
+const MaterialRequest = require("./MaterialRequest");
 
 module.exports = {
   User,
@@ -16,4 +17,5 @@ module.exports = {
   Proposal,
   Cart,
   CheckOut,
+  MaterialRequest,
 };

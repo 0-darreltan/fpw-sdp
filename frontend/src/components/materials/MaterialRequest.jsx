@@ -1,6 +1,9 @@
 import React, { useState } from "react";
+import { useDispatch } from "react-redux";
+import { actionMaterialRequest } from "../../features/materialRequest/materialRequestSlice";
 
 const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, materials }) => {
+  const dispatch = useDispatch();
   const [requestData, setRequestData] = useState({
     projectId: "",
     projectName: "",
@@ -36,15 +39,25 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
 
   const addItem = () => {
     if (currentItem.productId && currentItem.quantity) {
-      const product = products.find(
-        (p) => p.id === parseInt(currentItem.productId)
+      const product = (materials || products || []).find(
+        (p) => String(p.id || p._id) === String(currentItem.productId)
       );
+      
+      if (!product) {
+        alert("Produk tidak ditemukan");
+        return;
+      }
+
       const item = {
         id: Date.now(),
+        productId: String(product.id || product._id), // Ensure string
+        productName: product.name,
         product,
         quantity: parseFloat(currentItem.quantity),
-        notes: currentItem.notes,
-        subtotal: product.price * parseFloat(currentItem.quantity),
+        notes: currentItem.notes || "",
+        unit: product.unit,
+        price: parseFloat(product.price),
+        subtotal: parseFloat(product.price) * parseFloat(currentItem.quantity),
       };
 
       setRequestData({
@@ -79,7 +92,7 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
     }).format(price);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (requestData.items.length === 0) {
@@ -93,40 +106,44 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
     }
 
     const materialRequest = {
-      ...requestData,
-      requesterId: user.id,
-      requesterName: user.name,
-      requesterEmail: user.email,
+      projectId: requestData.projectId,
+      projectName: requestData.projectName,
+      requestReason: requestData.requestReason,
+      urgencyLevel: requestData.urgencyLevel,
+      items: requestData.items.map(item => ({
+        productId: String(item.productId), // Ensure string
+        productName: item.productName,
+        quantity: Number(item.quantity), // Ensure number
+        unit: item.unit,
+        price: Number(item.price), // Ensure number
+        subtotal: Number(item.subtotal), // Ensure number
+        notes: item.notes || "",
+      })),
       total: calculateTotal(),
-      status: "pending_approval",
-      type: "material_request",
-      createdAt: new Date().toISOString(),
     };
 
-    // If parent provided a handler, call it so the request is persisted in app state
-    if (typeof onAddMaterialRequest === "function") {
-      try {
-        onAddMaterialRequest(materialRequest);
-      } catch (err) {
-        console.error("Failed to submit material request:", err);
-      }
-    } else {
-      // fallback to console log for dev
-      console.log("Material Request:", materialRequest);
+    console.log("Submitting material request:", materialRequest);
+
+    try {
+      // Submit via Redux
+      await dispatch(actionMaterialRequest.createMaterialRequest(materialRequest)).unwrap();
+      
+      setShowSuccess(true);
+
+      // Reset form
+      setRequestData({
+        projectId: "",
+        projectName: "",
+        requestReason: "",
+        urgencyLevel: "normal",
+        items: [],
+      });
+
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (err) {
+      console.error("Failed to submit material request:", err);
+      alert("Gagal mengajukan permintaan material: " + (err.message || "Terjadi kesalahan"));
     }
-
-    setShowSuccess(true);
-
-    // Reset form
-    setRequestData({
-      projectId: "",
-      projectName: "",
-      requestReason: "",
-      urgencyLevel: "normal",
-      items: [],
-    });
-
-    setTimeout(() => setShowSuccess(false), 5000);
   };
 
   const getUrgencyBadge = (level) => {
@@ -183,7 +200,7 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
                 onChange={(e) => {
                   const projectId = e.target.value;
                   const project = myProjects.find(
-                    (p) => p.id === parseInt(projectId)
+                    (p) => String(p.id || p._id) === String(projectId)
                   );
                   setRequestData({
                     ...requestData,
@@ -196,7 +213,7 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
               >
                 <option value="">Pilih Proyek</option>
                 {myProjects.map((project) => (
-                  <option key={project.id} value={project.id}>
+                  <option key={project.id || project._id} value={project.id || project._id}>
                     {project.name}
                   </option>
                 ))}
@@ -255,7 +272,7 @@ const MaterialRequest = ({ products, user, projects, onAddMaterialRequest, mater
               >
                 <option value="">Pilih Material</option>
                 {(materials || products || []).map((product) => (
-                  <option key={product.id} value={product.id}>
+                  <option key={product.id || product._id} value={product.id || product._id}>
                     {product.name} - {formatPrice(product.price)}/{product.unit}
                   </option>
                 ))}

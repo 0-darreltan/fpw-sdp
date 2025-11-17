@@ -5,6 +5,7 @@ const projectRouter = require("./projectRoute");
 const productRouter = require("./productRoute");
 const orderRouter = require("./orderRoute");
 const webhookRouter = require("./webhookRoute");
+const materialRequestRouter = require("./materialRequestRoute");
 
 module.exports = {
   userRouter,
@@ -14,4 +15,5 @@ module.exports = {
   productRouter,
   orderRouter,
   webhookRouter,
+  materialRequestRouter,
 };

@@ -3,7 +3,7 @@ import { loginValidationSchema } from "../../utils/validation/loginValidation";
 import { joiResolver } from "@hookform/resolvers/joi";
 import { useDispatch, useSelector } from "react-redux";
 import { actionUser } from "../../features/users/userSlice";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 const Login = () => {

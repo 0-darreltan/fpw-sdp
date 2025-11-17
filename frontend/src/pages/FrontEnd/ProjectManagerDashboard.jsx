@@ -25,6 +25,9 @@ const ProjectManagerDashboard = ({
   onAddMaterialRequest,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
+  const [proposalsFetched, setProposalsFetched] = useState(false);
+  const [rabsFetched, setRabsFetched] = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
 
   // RAB / proposal local UI state
   const [selectedRAB, setSelectedRAB] = useState(null);
@@ -66,10 +69,16 @@ const ProjectManagerDashboard = ({
   const projectsLoading = useSelector((s) => s.project.loading);
   const projectsError = useSelector((s) => s.project.error);
   const rawProducts = useSelector((s) => s.product.listProducts) || [];
+  const productsLoading = useSelector((s) => s.product.loading);
   const rawProposalsFromStore = useSelector((s) => s.proposal.listProposals);
   const rawProposals = Array.isArray(rawProposalsFromStore) ? rawProposalsFromStore : [];
+  const proposalsLoading = useSelector((s) => s.proposal.loading);
   const rawRabsFromStore = useSelector((s) => s.rab.listRabs);
   const rawRabs = Array.isArray(rawRabsFromStore) ? rawRabsFromStore : [];
+  const rabsLoading = useSelector((s) => s.rab.loading);
+  
+  // Check if essential initial data is still loading (only projects and products)
+  const isLoadingInitialData = !initialFetchDone && (projectsLoading || productsLoading);
 
   // normalize backend objects to the shape used by this component
   const normProjects = rawProjects.map((p) => ({
@@ -119,14 +128,43 @@ const ProjectManagerDashboard = ({
 
   // Expose data either from props (parent) or from store
 
-  // Fetch initial data - always fetch to ensure fresh data
+  // Fetch initial data - optimized with Promise.all for faster parallel loading
   useEffect(() => {
-    // Always fetch fresh data
-    dispatch(actionProject.fetchProjects());
-    dispatch(actionProduct.fetchProduct());
-    dispatch(actionProposal.fetchProposals());
-    dispatch(actionRab.fetchRabs());
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const fetchAllData = async () => {
+      try {
+        // Only fetch essential data initially (projects and products)
+        // Other data will be fetched when needed
+        await Promise.all([
+          dispatch(actionProject.fetchProjects()),
+          dispatch(actionProduct.fetchProduct()),
+        ]);
+        setInitialFetchDone(true);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setInitialFetchDone(true); // Still set to true to prevent infinite loading
+      }
+    };
+    
+    if (!initialFetchDone) {
+      fetchAllData();
+    }
+  }, [initialFetchDone, dispatch]);
+
+  // Lazy load proposals when proposals tab is active
+  useEffect(() => {
+    if (activeTab === "proposals" && !proposalsFetched) {
+      dispatch(actionProposal.fetchProposals());
+      setProposalsFetched(true);
+    }
+  }, [activeTab, proposalsFetched, dispatch]);
+
+  // Lazy load rabs when rabs tab is active
+  useEffect(() => {
+    if (activeTab === "rabs" && !rabsFetched) {
+      dispatch(actionRab.fetchRabs());
+      setRabsFetched(true);
+    }
+  }, [activeTab, rabsFetched, dispatch]);
 
   // Handlers that dispatch to slices (used when parent doesn't pass handlers)
   const handleAddProject = async (payload) => {
@@ -851,17 +889,17 @@ const ProjectManagerDashboard = ({
     }
   };
 
-  // Show loading if user not loaded yet
-  if (!user) {
+  // Show loading if user not loaded yet OR initial data is still loading
+  if (!user || isLoadingInitialData) {
     return (
       <div className="min-h-screen bg-gray-50 p-4 sm:p-6 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">⏳</div>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Memuat Dashboard...
           </h3>
           <p className="text-gray-600">
-            Mohon tunggu sebentar
+            {!user ? "Memuat data user..." : "Memuat data proyek..."}
           </p>
         </div>
       </div>

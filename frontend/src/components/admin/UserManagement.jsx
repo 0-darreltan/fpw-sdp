@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, Outlet, useLocation } from "react-router";
+import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { actionUser } from "../../features/users/userSlice";
 
 const UserManagement = () => {

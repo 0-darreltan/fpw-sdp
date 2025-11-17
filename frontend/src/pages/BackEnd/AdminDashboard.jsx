@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
-import { useNavigate, useLocation, Outlet } from "react-router";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import Dashboard from "./Dashboard";
 import UserManagement from "../../components/admin/UserManagement";
 import ProductManagement from "../../components/admin/ProductManagement";
 import MaterialManagement from "../../components/admin/MaterialManagement";
 import OrderManagement from "../../components/admin/OrderManagement";
+import MaterialRequestManagement from "../../components/admin/MaterialRequestManagement";
 
 const AdminDashboard = ({ data }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -59,6 +60,9 @@ const AdminDashboard = ({ data }) => {
 
       case "materials":
         return <MaterialManagement materials={data?.materials || []} />;
+
+      case "material-requests":
+        return <MaterialRequestManagement />;
 
       default:
         return (
@@ -231,6 +235,21 @@ const AdminDashboard = ({ data }) => {
               >
                 <span className="text-2xl mr-3">🧱</span>
                 <span>Kelola Material</span>
+              </button>
+            </li>
+
+            {/* Permintaan Material */}
+            <li>
+              <button
+                onClick={() => handleTabChange("material-requests")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "material-requests"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">📋</span>
+                <span>Permintaan Material</span>
               </button>
             </li>
           </ul>

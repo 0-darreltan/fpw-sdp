@@ -8,6 +8,7 @@ import productReducer from "../features/product/productSlice";
 import orderReducer from "../features/order/orderSlice";
 import paymentReducer from "../features/payment/paymentSlice";
 import rabReducer from "../features/RAB/rabSlice";
+import materialRequestReducer from "../features/materialRequest/materialRequestSlice";
 
 const persistConfig = {
   key: "user",
@@ -25,6 +26,7 @@ export const store = configureStore({
     order: orderReducer,
     payment: paymentReducer,
     rab: rabReducer,
+    materialRequest: materialRequestReducer,
   },
 });
 
