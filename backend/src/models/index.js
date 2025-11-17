@@ -4,6 +4,8 @@ const Project = require('./Project');
 const Order = require('./Order');
 const RAB = require('./RAB');
 const Proposal = require('./Proposal');
+const Cart = require("./Cart");
+const CheckOut = require("./CheckOut");
 
 module.exports = {
   User,
@@ -11,5 +13,7 @@ module.exports = {
   Project,
   Order,
   RAB,
-  Proposal
+  Proposal,
+  Cart,
+  CheckOut,
 };

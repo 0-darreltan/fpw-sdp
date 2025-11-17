@@ -52,7 +52,6 @@ const {
   projectRouter,
   productRouter,
   orderRouter,
-  paymentRouter,
   webhookRouter,
 } = require("./src/routes");
 
@@ -66,7 +65,6 @@ app.use("/api/proposals", proposalRouter);
 app.use("/api/projects", projectRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);
-app.use("/api/payments", paymentRouter);
 app.use("/api/webhooks", webhookRouter);
 
 app.get("/", (req, res) => {

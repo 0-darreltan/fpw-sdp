@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const mongoose = require("mongoose");
 
-const { MONGO_URI, MONGO_DB, NODE_ENV, CREATE_COLLECTIONS } = process.env;
+const { MONGO_URI, NODE_ENV, CREATE_COLLECTIONS } = process.env;
 
 // Build a sensible default URI if MONGO_URI is not provided
 const defaultDbName = process.env.DATABASE_NAME || "fpw-sdp";

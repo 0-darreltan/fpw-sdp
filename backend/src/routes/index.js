@@ -4,7 +4,6 @@ const proposalRouter = require("./proposalRoute");
 const projectRouter = require("./projectRoute");
 const productRouter = require("./productRoute");
 const orderRouter = require("./orderRoute");
-const paymentRouter = require("./paymentRoute");
 const webhookRouter = require("./webhookRoute");
 
 module.exports = {
@@ -14,6 +13,5 @@ module.exports = {
   projectRouter,
   productRouter,
   orderRouter,
-  paymentRouter,
   webhookRouter,
 };

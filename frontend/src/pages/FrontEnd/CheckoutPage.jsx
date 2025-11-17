@@ -1,109 +1,168 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { useLocation } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 
 const CheckoutPage = () => {
-  const [snapReady, setSnapReady] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [snapToken, setSnapToken] = useState(null);
+  const [searchParams] = useSearchParams();
   const location = useLocation();
-  const { order } = location.state || {};
+  const navigate = useNavigate();
 
-  console.log(order);
+  const rabId = searchParams.get("rabId");
 
-  const { oneUsers } = useSelector((state) => state.users);
+  const [items, setItems] = useState([]);
+  const [subtotal, setSubtotal] = useState(0);
 
-  useEffect(() => {
-    setCurrUsers(oneUsers);
-  }, [oneUsers]);
+  const [form, setForm] = useState({
+    deliveryAddress: "",
+    paymentMethod: "bank_transfer",
+  });
 
-  const [currUsers, setCurrUsers] = useState({});
-  // 🔹 Load script Snap Midtrans
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-    script.setAttribute(
-      "data-client-key",
-      import.meta.env.VITE_MIDTRANS_CLIENT_KEY
-    );
-    script.onload = () => setSnapReady(true);
-    document.body.appendChild(script);
-  }, []);
+  const [loading, setLoading] = useState(true);
 
-  const handlePayment = async () => {
+  // -----------------------------
+  // MODE 1: Checkout dari RAB
+  // -----------------------------
+  async function loadRABItems() {
     try {
-      setLoading(true);
-      // Kirim data transaksi ke backend
-      const res = await fetch(
-        "http://localhost:3000/api/payments/create-transaction",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: "ORDER-" + Date.now(),
-            grossAmount: order.total,
-            customer: {
-              name: "customer1",
-              email: "john@example.com",
-              phone: "081234567890",
-            },
-            items: order.items,
-          }),
-        }
-      );
-
+      const res = await fetch(`http://localhost:3000/api/rab/${rabId}`);
       const data = await res.json();
-      console.log(data.token);
-      setSnapToken(data.token);
-      setLoading(false);
 
-      if (data.token && window.snap) {
-        window.snap.pay(data.token, {
-          onSuccess: (result) => {
-            console.log("✅ Payment success:", result);
-            alert("Pembayaran berhasil!");
-          },
-          onPending: (result) => {
-            console.log("⏳ Payment pending:", result);
-            alert("Menunggu konfirmasi pembayaran.");
-          },
-          onError: (error) => {
-            console.error("❌ Payment error:", error);
-            alert("Terjadi kesalahan pembayaran.");
-          },
-          onClose: () => {
-            console.log("❎ Payment popup closed");
-          },
-        });
-      }
+      const converted = data.items.map((i) => ({
+        productId: i.productId,
+        qty: i.qty,
+        price: i.unitPrice,
+        unit: i.unit,
+      }));
+
+      setItems(converted);
+
+      const sum = converted.reduce((acc, i) => acc + i.qty * i.price, 0);
+      setSubtotal(sum);
     } catch (err) {
-      console.error(err);
+      console.log("Error load RAB:", err);
+    }
+  }
+
+  // -----------------------------
+  // MODE 2: Checkout Biasa
+  // -----------------------------
+  function loadNormalCheckout() {
+    const cartItems = location.state?.items || [];
+
+    setItems(cartItems);
+
+    const sum = cartItems.reduce((acc, i) => acc + i.qty * i.price, 0);
+    setSubtotal(sum);
+  }
+
+  // -----------------------------
+  // Detect mode (RAB or Normal)
+  // -----------------------------
+  useEffect(() => {
+    async function init() {
+      if (rabId) {
+        await loadRABItems(); // Mode RAB
+      } else {
+        loadNormalCheckout(); // Mode normal
+      }
       setLoading(false);
     }
+
+    init();
+  }, [rabId]);
+
+  // -----------------------------
+  // Submit Checkout
+  // -----------------------------
+  const handleCheckout = async () => {
+    const body = {
+      rabId: rabId || null,
+      items,
+      subtotal,
+      total: subtotal,
+      deliveryAddress: form.deliveryAddress,
+      paymentMethod: form.paymentMethod,
+    };
+
+    const res = await fetch("http://localhost:3000/api/order/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+    console.log("Order created:", data);
+
+    navigate(`/order-success/${data.order._id}`);
   };
 
-  return (
-    <div className="max-w-lg mx-auto p-6 bg-white rounded-2xl shadow-lg">
-      <h2 className="text-xl font-bold mb-4">Checkout</h2>
+  if (loading) return <p>Loading...</p>;
 
-      <div className="border p-4 rounded-lg mb-4">
-        <p>
-          <strong>Customer:</strong> customer1
+  return (
+    <div style={{ maxWidth: 600, margin: "auto" }}>
+      <h1>Checkout</h1>
+
+      {rabId ? (
+        <p style={{ color: "blue" }}>
+          Mode: Checkout dari <b>RAB</b>
         </p>
-        <p>
-          <strong>Email:</strong> john@example.com
+      ) : (
+        <p style={{ color: "green" }}>
+          Mode: Checkout <b>Normal</b>
         </p>
-        <p>
-          <strong>Total:</strong> Rp {order.total.toLocaleString()}
-        </p>
-      </div>
+      )}
+
+      <hr />
+
+      <h3>Items</h3>
+      {items.map((item, idx) => (
+        <div key={idx} style={{ marginBottom: 10 }}>
+          <p>
+            <b>{item.productName || item.productId}</b>
+          </p>
+          <p>
+            {item.qty} x Rp {item.price.toLocaleString()}
+          </p>
+        </div>
+      ))}
+
+      <h2>Subtotal: Rp {subtotal.toLocaleString()}</h2>
+
+      <hr />
+
+      <h3>Delivery Address</h3>
+      <textarea
+        rows="3"
+        style={{ width: "100%" }}
+        value={form.deliveryAddress}
+        onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })}
+        placeholder="Masukkan alamat lengkap..."
+      />
+
+      <h3>Payment Method</h3>
+      <select
+        value={form.paymentMethod}
+        onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+      >
+        <option value="bank_transfer">Bank Transfer</option>
+        <option value="e-wallet">E-Wallet</option>
+        <option value="qris">QRIS</option>
+      </select>
+
+      <br />
+      <br />
 
       <button
-        onClick={handlePayment}
-        disabled={!snapReady || loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+        onClick={handleCheckout}
+        style={{
+          width: "100%",
+          padding: 10,
+          background: "black",
+          color: "white",
+          borderRadius: 8,
+        }}
       >
-        {loading ? "Processing..." : "Bayar Sekarang"}
+        Buat Pesanan
       </button>
     </div>
   );

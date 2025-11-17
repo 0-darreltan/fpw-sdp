@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 
 const Header = () => {
   const navigate = useNavigate();
-  const { currUsers } = useSelector((state) => state.users);
+  const { loggedInUser } = useSelector((state) => state.users);
 
   const handleLogout = () => {
     navigate("/login");
@@ -53,10 +53,10 @@ const Header = () => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <span className="block text-sm font-medium text-gray-900">
-                {currUsers?.user?.name}
+                {loggedInUser?.name}
               </span>
               <span className="block text-xs text-gray-600">
-                ({getRoleDisplayName(currUsers?.user?.role)})
+                ({getRoleDisplayName(loggedInUser?.role)})
               </span>
             </div>
             <button

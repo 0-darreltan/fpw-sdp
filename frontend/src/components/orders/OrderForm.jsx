@@ -45,14 +45,14 @@ const orderSchema = Joi.object({
     }),
 });
 
-const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
+const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
   const navigate = useNavigate();
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState("");
   const [itemsLoaded, setItemsLoaded] = useState(false);
 
-  const { currUsers } = useSelector((state) => state.users);
+  const { loggedInUser } = useSelector((state) => state.users);
 
   const {
     register,
@@ -63,6 +63,7 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
     formState: { errors },
   } = useForm({
     resolver: joiResolver(orderSchema),
+    context: { mode },
     defaultValues: {
       projectName: "",
       projectLocation: "",
@@ -118,26 +119,38 @@ const OrderForm = ({ products = [], user, onAddOrder, initialItems = [] }) => {
   };
 
   const handleCheckout = () => {
-    const orderData = {
+    const projectData = {
       projectName: watch("projectName"),
       projectLocation: watch("projectLocation"),
       projectDescription: watch("projectDescription"),
       startDate: watch("startDate"),
       endDate: watch("endDate"),
-      items: watchItems,
-      total: calculateTotal(),
-      customer: {
-        username: currUsers?.username,
-        name: currUsers?.name,
-        email: currUsers?.email,
-        phone: currUsers?.phone,
-      },
     };
 
-    console.log(orderData);
+    const itemsForCheckout = watchItems.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      qty: item.quantity, // <--- Perubahan utama di sini
+      price: item.price,
+      unit: item.unit,
+      notes: item.notes,
+    }));
 
+    const checkoutData = {
+      project: projectData, // Mengirim info proyek jika diperlukan di checkout
+      items: itemsForCheckout, // Mengirim items dengan struktur yang sudah benar
+      total: calculateTotal(),
+      customer: {
+        // Mengirim info user
+        username: loggedInUser?.username,
+        name: loggedInUser?.name,
+        email: loggedInUser?.email,
+        phone: loggedInUser?.phone,
+      },
+    };
+    console.log("🚀 Proceeding to checkout with data:", checkoutData);
     // Navigasi ke halaman checkout
-    navigate("/checkout", { state: { order: orderData } });
+    navigate("/checkout", { state: checkoutData });
   };
 
   const formatPrice = (price) => {

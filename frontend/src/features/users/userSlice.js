@@ -84,6 +84,8 @@ const RegisterUser = createAsyncThunk(
 
 const initialState = {
   currUsers: null,
+  token: "",
+  loggedInUser: {},
   oneUsers: {},
   listUsers: [],
   loading: false,
@@ -145,7 +147,8 @@ const userSlice = createSlice({
       })
       .addCase(updateUser.fulfilled, (state, action) => {
         state.loading = false;
-        const updated = action.payload?.user || action.payload?.result || action.payload;
+        const updated =
+          action.payload?.user || action.payload?.result || action.payload;
         if (!updated) return;
         const updatedId = updated._id || updated.id;
 
@@ -153,20 +156,24 @@ const userSlice = createSlice({
         state.listUsers = state.listUsers.map((user) =>
           (user._id || user.id) === updatedId ? updated : user
         );
-        
+
         // Update oneUsers jika sedang melihat detail user yang diupdate
-        if (state.oneUsers && (state.oneUsers._id || state.oneUsers.id) === updatedId) {
+        if (
+          state.oneUsers &&
+          (state.oneUsers._id || state.oneUsers.id) === updatedId
+        ) {
           state.oneUsers = updated;
         }
-        
+
         // HANYA update currUsers jika yang diupdate adalah user yang sedang login
         // Cek ID dari user yang sedang login vs ID user yang diupdate
-        const currentLoggedInUserId = state.currUsers?.user?.id || state.currUsers?.user?._id;
+        const currentLoggedInUserId =
+          state.currUsers?.user?.id || state.currUsers?.user?._id;
         if (currentLoggedInUserId === updatedId) {
           // Ini adalah self-update, update currUsers
           state.currUsers = {
             ...state.currUsers,
-            user: updated
+            user: updated,
           };
           sessionStorage.setItem("user", JSON.stringify(updated));
         }
@@ -208,7 +215,11 @@ const userSlice = createSlice({
       })
       .addCase(LoginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.currUsers = action.payload;
+        state.currUsers = action.payload.user.name;
+        state.token = action.payload.token;
+        state.loggedInUser = action.payload.user;
+        console.log({ "Current User": action.payload.user });
+        console.log({ "Current Token": action.payload.token });
       })
       .addCase(LoginUser.rejected, (state, action) => {
         state.loading = false;

@@ -15,22 +15,16 @@ const persistConfig = {
 };
 
 const persistUserReducer = persistReducer(persistConfig, userReducer);
-const persistProposalReducer = persistReducer(persistConfig, proposalReducer);
-const persistProjectReducer = persistReducer(persistConfig, projectReducer);
-const persistProductReducer = persistReducer(persistConfig, productReducer);
-const persistOrderReducer = persistReducer(persistConfig, orderReducer);
-const persistPaymentReducer = persistReducer(persistConfig, paymentReducer);
-const persistRabReducer = persistReducer(persistConfig, rabReducer);
 
 export const store = configureStore({
   reducer: {
     users: persistUserReducer,
-    proposal: persistProposalReducer,
-    project: persistProjectReducer,
-    product: persistProductReducer,
-    order: persistOrderReducer,
-    payment: persistPaymentReducer,
-    rab: persistRabReducer,
+    proposal: proposalReducer,
+    project: projectReducer,
+    product: productReducer,
+    order: orderReducer,
+    payment: paymentReducer,
+    rab: rabReducer,
   },
 });
 
