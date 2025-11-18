@@ -9,13 +9,21 @@ import orderReducer from "../features/order/orderSlice";
 import paymentReducer from "../features/payment/paymentSlice";
 import rabReducer from "../features/RAB/rabSlice";
 import materialRequestReducer from "../features/materialRequest/materialRequestSlice";
+import cartReducer from "../features/cart/cartSlice";
 
 const persistConfig = {
   key: "user",
   storage,
 };
 
+const cartPersistConfig = {
+  key: "cart",
+  storage, // localStorage - persist cart
+  whitelist: ["items"], // Only persist items array
+};
+
 const persistUserReducer = persistReducer(persistConfig, userReducer);
+const persistCartReducer = persistReducer(cartPersistConfig, cartReducer);
 
 export const store = configureStore({
   reducer: {
@@ -27,6 +35,7 @@ export const store = configureStore({
     payment: paymentReducer,
     rab: rabReducer,
     materialRequest: materialRequestReducer,
+    cart: persistCartReducer,
   },
 });
 

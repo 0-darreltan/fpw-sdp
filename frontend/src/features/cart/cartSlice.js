@@ -114,7 +114,13 @@ const cartSlice = createSlice({
 });
 
 // Ekspor aksi sinkron
-export const { clearCartError } = cartSlice.actions;
+export const actionCart = {
+  fetchCart,
+  upsertItemInCart,
+  deleteCartItem,
+  clearCart,
+  ...cartSlice.actions,
+};
 
 // Ekspor reducer
 export default cartSlice.reducer;

@@ -4,20 +4,39 @@ import OrderForm from "../../components/orders/OrderForm";
 import OrderHistory from "../../components/orders/OrderHistory";
 import ProductCatalog from "../../components/products/ProductCatalog";
 import { actionOrder } from "../../features/order/orderSlice";
+import { actionProduct } from "../../features/product/productSlice";
+import { actionCart } from "../../features/cart/cartSlice";
 
-const CustomerDashboard = ({ onAddOrder }) => {
+const CustomerDashboard = () => {
   const dispatch = useDispatch();
   const { currUsers } = useSelector((state) => state.users);
   const { listProducts } = useSelector((state) => state.product);
   const { listOrders } = useSelector((state) => state.order);
+  const { items: cartItems } = useSelector((state) => state.cart);
 
   const [activeTab, setActiveTab] = useState("catalog");
-  const [cartItems, setCartItems] = useState([]);
 
-  // Fetch orders when component mounts or when switching to history tab
+  // ✅ Debug cart items
   useEffect(() => {
+    console.log("🛒 Cart Items from Redux:", cartItems);
+  }, [cartItems]);
+
+  // ✅ Fetch data saat component mount
+  useEffect(() => {
+    dispatch(actionProduct.fetchProduct());
+
     if (currUsers?.id) {
       dispatch(actionOrder.fetchOrders());
+
+      // ✅ Fetch cart dan log response
+      dispatch(actionCart.fetchCart())
+        .unwrap()
+        .then((response) => {
+          console.log("✅ Fetch Cart Response:", response);
+        })
+        .catch((error) => {
+          console.error("❌ Fetch Cart Error:", error);
+        });
     }
   }, [dispatch, currUsers?.id]);
 
@@ -27,38 +46,39 @@ const CustomerDashboard = ({ onAddOrder }) => {
     { id: "history", label: "Riwayat Pesanan", icon: "📋" },
   ];
 
-  const handleAddFromCatalog = (product) => {
+  // ✅ Handle add to cart dengan logging
+  const handleAddFromCatalog = async (product) => {
     const productId = product.id ?? product._id;
 
-    setCartItems((prev) => {
-      // Cari item yang sudah ada berdasarkan productId
-      const existingIndex = prev.findIndex(
-        (item) => item.productId === productId
-      );
+    console.log("➕ Adding to cart:", { productId, product });
 
-      if (existingIndex !== -1) {
-        // Jika sudah ada, update quantity
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + 1,
-        };
-        return updated;
-      }
-
-      // Jika belum ada, tambahkan item baru
-      return [
-        ...prev,
-        {
-          id: productId, // Gunakan productId sebagai id cart item
+    try {
+      const upsertResponse = await dispatch(
+        actionCart.upsertItemInCart({
           productId: productId,
           quantity: 1,
-          meta: product,
-        },
-      ];
-    });
+        })
+      ).unwrap();
 
-    setActiveTab("order");
+      console.log("✅ Upsert Response:", upsertResponse);
+
+      const fetchResponse = await dispatch(actionCart.fetchCart()).unwrap();
+      console.log("✅ Cart after add:", fetchResponse);
+
+      setActiveTab("order");
+    } catch (error) {
+      console.error("❌ Failed to add to cart:", error);
+      alert("Gagal menambahkan ke keranjang: " + error.message);
+    }
+  };
+
+  const handleOrderComplete = async () => {
+    try {
+      await dispatch(actionCart.clearCart()).unwrap();
+      await dispatch(actionCart.fetchCart()).unwrap();
+    } catch (error) {
+      console.error("Failed to clear cart:", error);
+    }
   };
 
   const renderActiveTab = () => {
@@ -71,13 +91,10 @@ const CustomerDashboard = ({ onAddOrder }) => {
           <OrderForm
             products={listProducts}
             user={currUsers}
-            onAddOrder={(order) => {
-              if (onAddOrder) onAddOrder(order);
-              setCartItems([]);
-            }}
-            initialItems={cartItems}
+            onOrderComplete={handleOrderComplete}
           />
         );
+
       case "history":
         return <OrderHistory user={currUsers} orders={listOrders} />;
 

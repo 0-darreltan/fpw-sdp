@@ -3,9 +3,10 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { actionCart } from "../../features/cart/cartSlice";
 
-// ✅ Validation schema dengan Joi
+// ✅ Validation schema
 const orderSchema = Joi.object({
   projectName: Joi.string().min(3).required().messages({
     "string.empty": "Nama proyek wajib diisi",
@@ -31,8 +32,8 @@ const orderSchema = Joi.object({
       Joi.object({
         productId: Joi.string().required(),
         productName: Joi.string().required(),
-        quantity: Joi.number().min(0.1).required().messages({
-          "number.min": "Jumlah minimal 0.1",
+        quantity: Joi.number().min(1).required().messages({
+          "number.min": "Jumlah minimal 1",
           "number.base": "Jumlah harus berupa angka",
         }),
         price: Joi.number().required(),
@@ -45,25 +46,29 @@ const orderSchema = Joi.object({
     }),
 });
 
-const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
+const OrderForm = ({ products = [], user, onAddOrder, onOrderComplete }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [itemsLoaded, setItemsLoaded] = useState(false);
 
-  const { loggedInUser } = useSelector((state) => state.users);
+  // ✅ Get data from Redux
+  const { currUsers } = useSelector((state) => state.users);
+  const { items: cartItems, loading: cartLoading } = useSelector(
+    (state) => state.cart
+  );
 
   const {
     register,
     handleSubmit,
     control,
-    setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: joiResolver(orderSchema),
-    context: { mode },
     defaultValues: {
       projectName: "",
       projectLocation: "",
@@ -74,42 +79,39 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, replace } = useFieldArray({
     control,
     name: "items",
   });
 
-  // ✅ Load initial items from catalog
-  useEffect(() => {
-    if (initialItems && initialItems.length > 0 && !itemsLoaded) {
-      // Clear existing items first
-      setValue("items", []);
-
-      initialItems.forEach((item) => {
-        const product = products.find(
-          (p) => p.id === item.productId || p._id === item.productId
-        );
-        if (product) {
-          append({
-            productId: product.id || product._id,
-            productName: product.name,
-            quantity: item.quantity || 1,
-            price: product.price,
-            unit: product.unit,
-            notes: item.notes || "",
-          });
-        }
-      });
-
-      setItemsLoaded(true); // ✅ Mark as loaded
-    }
-  }, [initialItems, products, append, setValue, itemsLoaded]);
-
   const watchItems = watch("items");
+
+  // ✅ Load cart items dari Redux ke form
+  useEffect(() => {
+    if (cartItems && cartItems.length > 0) {
+      console.log("📥 Loading cart to form:", cartItems);
+
+      // ✅ Replace all items (lebih efisien daripada setValue + append)
+      const formattedItems = cartItems.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        unit: item.unit,
+        notes: "",
+      }));
+
+      replace(formattedItems);
+      console.log("✅ Cart loaded to form");
+    } else {
+      console.log("⚠️ Cart is empty");
+      replace([]);
+    }
+  }, [cartItems, replace]);
 
   // ✅ Calculate totals
   const calculateSubtotal = (item) => {
-    return (item.quantity || 0) * (item.price || 0);
+    return (item?.quantity || 0) * (item?.price || 0);
   };
 
   const calculateTotal = () => {
@@ -118,7 +120,114 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
     }, 0);
   };
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price || 0);
+  };
+
+  // ✅ Add product to cart
+  const handleAddToCart = async () => {
+    if (!selectedProduct || !quantity || quantity < 1) {
+      alert("Pilih produk dan masukkan jumlah yang valid");
+      return;
+    }
+
+    const product = products.find(
+      (p) => String(p.id || p._id) === String(selectedProduct)
+    );
+
+    if (!product) {
+      alert("Produk tidak ditemukan");
+      return;
+    }
+
+    try {
+      console.log("➕ Adding to cart:", {
+        productId: product.id || product._id,
+        quantity: parseInt(quantity),
+      });
+
+      await dispatch(
+        actionCart.upsertItemInCart({
+          productId: product.id || product._id,
+          quantity: parseInt(quantity),
+        })
+      ).unwrap();
+
+      console.log("✅ Item added to cart");
+
+      // Reset selection
+      setSelectedProduct("");
+      setQuantity("");
+    } catch (error) {
+      console.error("❌ Failed to add to cart:", error);
+      alert("Gagal menambahkan produk: " + (error.message || "Unknown error"));
+    }
+  };
+
+  // ✅ Remove item from cart
+  const handleRemoveItem = async (index, productId) => {
+    if (!window.confirm("Hapus item ini dari keranjang?")) return;
+
+    try {
+      console.log("🗑️ Removing item:", productId);
+
+      await dispatch(actionCart.deleteCartItem(productId)).unwrap();
+      console.log("✅ Item removed from cart");
+    } catch (error) {
+      console.error("❌ Failed to remove item:", error);
+      alert("Gagal menghapus item: " + (error.message || "Unknown error"));
+    }
+  };
+
+  // ✅ Update quantity - Debounced
+  const handleQuantityChange = async (index, productId, newQuantity) => {
+    const qty = parseInt(newQuantity);
+
+    if (!qty || qty < 1) {
+      alert("Jumlah minimal 1");
+      return;
+    }
+
+    try {
+      console.log("🔄 Updating quantity:", { productId, quantity: qty });
+
+      await dispatch(
+        actionCart.upsertItemInCart({
+          productId: productId,
+          quantity: qty,
+        })
+      ).unwrap();
+
+      console.log("✅ Quantity updated");
+    } catch (error) {
+      console.error("❌ Failed to update quantity:", error);
+    }
+  };
+
+  // ✅ Clear cart
+  const handleResetCart = async () => {
+    if (!window.confirm("Yakin ingin menghapus semua item?")) return;
+
+    try {
+      await dispatch(actionCart.clearCart()).unwrap();
+      console.log("✅ Cart cleared");
+    } catch (error) {
+      console.error("❌ Failed to clear cart:", error);
+      alert("Gagal reset keranjang: " + (error.message || "Unknown error"));
+    }
+  };
+
+  // ✅ Checkout
   const handleCheckout = () => {
+    if (fields.length === 0) {
+      alert("Keranjang masih kosong");
+      return;
+    }
+
     const projectData = {
       projectName: watch("projectName"),
       projectLocation: watch("projectLocation"),
@@ -130,80 +239,31 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
     const itemsForCheckout = watchItems.map((item) => ({
       productId: item.productId,
       productName: item.productName,
-      qty: item.quantity, // <--- Perubahan utama di sini
+      qty: item.quantity,
       price: item.price,
       unit: item.unit,
-      notes: item.notes,
+      notes: item.notes || "",
     }));
 
     const checkoutData = {
-      project: projectData, // Mengirim info proyek jika diperlukan di checkout
-      items: itemsForCheckout, // Mengirim items dengan struktur yang sudah benar
+      project: projectData,
+      items: itemsForCheckout,
       total: calculateTotal(),
       customer: {
-        // Mengirim info user
-        username: loggedInUser?.username,
-        name: loggedInUser?.name,
-        email: loggedInUser?.email,
-        phone: loggedInUser?.phone,
+        id: currUsers?.id || currUsers?._id,
+        username: currUsers?.username,
+        name: currUsers?.name,
+        email: currUsers?.email,
+        phone: currUsers?.phone,
       },
     };
-    console.log("🚀 Proceeding to checkout with data:", checkoutData);
-    // Navigasi ke halaman checkout
+
+    console.log("🚀 Proceeding to checkout:", checkoutData);
     navigate("/checkout", { state: checkoutData });
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(price);
-  };
-
-  // ✅ Add product to cart
-  const handleAddToCart = () => {
-    if (!selectedProduct || !quantity) {
-      alert("Pilih produk dan masukkan jumlah");
-      return;
-    }
-
-    const product = products.find(
-      (p) => String(p.id || p._id) === String(selectedProduct)
-    );
-    if (!product) return;
-
-    // Check if product already exists
-    const existingIndex = watchItems.findIndex(
-      (item) => String(item.productId) === String(product.id || product._id)
-    );
-
-    if (existingIndex >= 0) {
-      // Update quantity if exists
-      const currentQty = watchItems[existingIndex].quantity || 0;
-      setValue(
-        `items.${existingIndex}.quantity`,
-        currentQty + parseFloat(quantity)
-      );
-    } else {
-      // Add new item
-      append({
-        productId: product.id || product._id,
-        productName: product.name,
-        quantity: parseFloat(quantity),
-        price: product.price,
-        unit: product.unit,
-        notes: "",
-      });
-    }
-
-    // Reset selection
-    setSelectedProduct("");
-    setQuantity("");
-  };
-
   // ✅ Submit order
-  const onSubmit = (data) => {
+  const onSubmit = async (data) => {
     const order = {
       ...data,
       customerId: user?.id || user?._id,
@@ -216,18 +276,21 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
     };
 
     console.log("📦 Order submitted:", order);
-    onAddOrder(order);
+
+    if (onAddOrder) {
+      await onAddOrder(order);
+    }
+
     setShowSuccess(true);
 
-    // Reset form after 2 seconds
-    setTimeout(() => {
+    // Clear cart after order
+    setTimeout(async () => {
       setShowSuccess(false);
-      setValue("projectName", "");
-      setValue("projectLocation", "");
-      setValue("projectDescription", "");
-      setValue("startDate", "");
-      setValue("endDate", "");
-      setValue("items", []);
+      reset(); // ✅ Reset entire form
+
+      if (onOrderComplete) {
+        await onOrderComplete();
+      }
     }, 2000);
   };
 
@@ -245,8 +308,18 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
         </div>
       )}
 
+      {/* Loading State */}
+      {cartLoading && (
+        <div className="mb-6 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
+            <span>Memuat keranjang...</span>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Project Info Card */}
+        {/* Project Info */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
             <span>📋</span>
@@ -389,10 +462,11 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                disabled={cartLoading || !selectedProduct || !quantity}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span>➕</span>
-                <span>Tambah</span>
+                <span>{cartLoading ? "Loading..." : "Tambah"}</span>
               </button>
             </div>
           </div>
@@ -432,12 +506,10 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
                   className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
                 >
                   <div className="flex items-start gap-4">
-                    {/* Product Icon */}
                     <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
                       📦
                     </div>
 
-                    {/* Product Details */}
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-gray-900 text-lg mb-1">
                         {watchItems[index]?.productName}
@@ -457,6 +529,13 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
                             type="number"
                             min="1"
                             step="1"
+                            onBlur={(e) =>
+                              handleQuantityChange(
+                                index,
+                                watchItems[index]?.productId,
+                                e.target.value
+                              )
+                            }
                             className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
                               errors.items?.[index]?.quantity
                                 ? "border-red-500 focus:ring-red-500"
@@ -492,8 +571,14 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
                         </div>
                         <button
                           type="button"
-                          onClick={() => remove(index)}
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors duration-200 flex items-center gap-1"
+                          onClick={() =>
+                            handleRemoveItem(
+                              index,
+                              watchItems[index]?.productId
+                            )
+                          }
+                          disabled={cartLoading}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors duration-200 flex items-center gap-1 disabled:opacity-50"
                         >
                           <span>🗑️</span>
                           <span className="text-sm font-medium">Hapus</span>
@@ -522,20 +607,22 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
           )}
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-end gap-4">
+        {/* Action Buttons */}
+        <div className="flex flex-wrap justify-end gap-4">
           <button
             type="button"
-            onClick={() => setValue("items", [])}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200"
+            onClick={handleResetCart}
+            disabled={cartLoading || fields.length === 0}
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reset Keranjang
           </button>
+
           <button
             type="submit"
-            disabled={fields.length === 0}
+            disabled={fields.length === 0 || cartLoading}
             className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-              fields.length === 0
+              fields.length === 0 || cartLoading
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl"
             }`}
@@ -546,9 +633,9 @@ const OrderForm = ({ products, user, onAddOrder, initialItems, mode }) => {
           <button
             type="button"
             onClick={handleCheckout}
-            disabled={fields.length === 0}
+            disabled={fields.length === 0 || cartLoading}
             className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-              fields.length === 0
+              fields.length === 0 || cartLoading
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
             }`}
