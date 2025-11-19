@@ -47,13 +47,21 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (state, action) => {
         state.loading = false;
-        const payload = action.payload?.result || action.payload;
-        state.listOrders = payload || [];
+        // Handle different response structures
+        let payload = action.payload;
+        if (payload?.data) {
+          payload = payload.data;
+        } else if (payload?.result) {
+          payload = payload.result;
+        }
+        // Ensure payload is always an array
+        state.listOrders = Array.isArray(payload) ? payload : [];
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.loading = false;
         state.error =
           action.error?.message || action.payload || "Failed to fetch orders";
+        state.listOrders = []; // Reset to empty array on error
       })
 
       // fetchOrderById (gunakan _id)
@@ -63,13 +71,20 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrderById.fulfilled, (state, action) => {
         state.loading = false;
-        const payload = action.payload?.result || action.payload;
+        // Handle different response structures
+        let payload = action.payload;
+        if (payload?.data) {
+          payload = payload.data;
+        } else if (payload?.result) {
+          payload = payload.result;
+        }
         state.oneOrder = payload || {};
       })
       .addCase(fetchOrderById.rejected, (state, action) => {
         state.loading = false;
         state.error =
           action.error?.message || action.payload || "Failed to fetch order";
+        state.oneOrder = {}; // Reset to empty object on error
       })
 
       // createOrder

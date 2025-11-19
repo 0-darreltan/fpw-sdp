@@ -1,4 +1,4 @@
-const { Project, User } = require("../models");
+const { Project, User, ActivityLog } = require("../models");
 const {
   createProjectSchema,
   updateProjectSchema,
@@ -81,6 +81,25 @@ const createProject = async (req, res) => {
     });
 
     await project.save();
+
+    // Create activity log for new project
+    await ActivityLog.create({
+      type: "project_created",
+      title: "Project Baru Dibuat",
+      description: `Project Manager ${manager.name} membuat project baru "${name}" di lokasi ${location}. Budget: Rp ${budget?.toLocaleString('id-ID') || 0}`,
+      userId: projectManagerId,
+      userName: manager.name,
+      userRole: manager.role,
+      projectId: project._id,
+      icon: "🏗️",
+      metadata: {
+        projectName: name,
+        location,
+        budget,
+        startDate,
+        endDate,
+      },
+    });
 
     res.status(201).json({
       success: true,

@@ -1,4 +1,4 @@
-const { MaterialRequest, Product } = require("../models");
+const { MaterialRequest, Product, ActivityLog } = require("../models");
 const Joi = require("joi");
 
 // Validation schemas
@@ -183,15 +183,84 @@ const updateMaterialRequest = async (req, res) => {
       req.body.approvedAt = new Date();
 
       // Deduct stock for approved items
-      if (req.body.items && req.body.items.length > 0) {
-        for (const item of req.body.items) {
-          if (item.stockStatus === "sufficient") {
-            await Product.findByIdAndUpdate(item.productId, {
-              $inc: { stock: -item.quantity },
-            });
-          }
+      const itemsToProcess = req.body.items && req.body.items.length > 0 
+        ? req.body.items 
+        : request.items;
+
+      const stockChanges = [];
+
+      for (const item of itemsToProcess) {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          return res.status(404).json({
+            success: false,
+            message: `Product ${item.productName} not found`,
+          });
         }
+
+        // Check if there's enough stock
+        if (product.stock < item.quantity) {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient stock for ${item.productName}. Available: ${product.stock}, Requested: ${item.quantity}`,
+          });
+        }
+
+        const previousStock = product.stock;
+        const newStock = previousStock - item.quantity;
+
+        // Deduct stock
+        await Product.findByIdAndUpdate(item.productId, {
+          $inc: { stock: -item.quantity },
+        });
+
+        stockChanges.push({
+          productName: item.productName,
+          quantity: item.quantity,
+          previousStock,
+          newStock,
+        });
       }
+
+      // Create activity log for material request approval
+      const activityDescription = stockChanges
+        .map(
+          (change) =>
+            `${change.productName}: ${change.quantity} unit (Stok: ${change.previousStock} → ${change.newStock})`
+        )
+        .join(", ");
+
+      await ActivityLog.create({
+        type: "material_request_approved",
+        title: `Permintaan Material Disetujui`,
+        description: `Admin ${req.user.name} menyetujui permintaan material untuk proyek "${request.projectName}". Material yang disetujui: ${activityDescription}`,
+        userId: req.user._id,
+        userName: req.user.name,
+        userRole: req.user.role,
+        materialRequestId: request._id,
+        icon: "✅",
+        metadata: {
+          projectName: request.projectName,
+          stockChanges,
+          totalItems: stockChanges.length,
+        },
+      });
+    } else if (req.body.status === "rejected") {
+      // Create activity log for rejection
+      await ActivityLog.create({
+        type: "material_request_rejected",
+        title: `Permintaan Material Ditolak`,
+        description: `Admin ${req.user.name} menolak permintaan material untuk proyek "${request.projectName}". Alasan: ${req.body.adminNotes || "Tidak disebutkan"}`,
+        userId: req.user._id,
+        userName: req.user.name,
+        userRole: req.user.role,
+        materialRequestId: request._id,
+        icon: "❌",
+        metadata: {
+          projectName: request.projectName,
+          adminNotes: req.body.adminNotes,
+        },
+      });
     }
 
     const updatedRequest = await MaterialRequest.findByIdAndUpdate(

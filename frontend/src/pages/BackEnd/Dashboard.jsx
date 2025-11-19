@@ -4,6 +4,7 @@ import { actionProduct } from "../../features/product/productSlice";
 import { actionUser } from "../../features/users/userSlice";
 import { actionOrder } from "../../features/order/orderSlice";
 import { actionProject } from "../../features/project/projectSlice";
+import { activityActions } from "../../features/activity/activitySlice";
 
 const Dashboard = ({ data }) => {
   const dispatch = useDispatch();
@@ -12,12 +13,14 @@ const Dashboard = ({ data }) => {
   const { listUsers } = useSelector((state) => state.users);
   const { listOrders } = useSelector((state) => state.order);
   const { listProjects } = useSelector((state) => state.project);
+  const { listActivities, loading: activityLoading } = useSelector((state) => state.activity);
 
   useEffect(() => {
     dispatch(actionProduct.fetchProduct());
     dispatch(actionUser.fetchUser());
     dispatch(actionOrder.fetchOrder());
     dispatch(actionProject.fetchProject());
+    dispatch(activityActions.fetchActivities({ limit: 10 }));
   }, [dispatch]);
 
   const stats = [
@@ -76,24 +79,46 @@ const Dashboard = ({ data }) => {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Aktivitas Terbaru
         </h3>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-            >
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl">
-                📝
+        {activityLoading ? (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="text-sm text-gray-500 mt-2">Memuat aktivitas...</p>
+          </div>
+        ) : listActivities.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Belum ada aktivitas</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {listActivities.map((activity) => (
+              <div
+                key={activity._id}
+                className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl flex-shrink-0">
+                  {activity.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    {activity.title}
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1 break-words">
+                    {activity.description}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(activity.createdAt).toLocaleString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  Pesanan baru masuk
-                </p>
-                <p className="text-xs text-gray-500">2 menit yang lalu</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Charts Placeholder */}

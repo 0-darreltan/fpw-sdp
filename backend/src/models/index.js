@@ -7,6 +7,7 @@ const Proposal = require('./Proposal');
 const Cart = require("./Cart");
 const CheckOut = require("./CheckOut");
 const MaterialRequest = require("./MaterialRequest");
+const ActivityLog = require("./ActivityLog");
 
 module.exports = {
   User,
@@ -18,4 +19,5 @@ module.exports = {
   Cart,
   CheckOut,
   MaterialRequest,
+  ActivityLog,
 };

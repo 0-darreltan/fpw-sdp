@@ -10,6 +10,7 @@ import paymentReducer from "../features/payment/paymentSlice";
 import rabReducer from "../features/RAB/rabSlice";
 import materialRequestReducer from "../features/materialRequest/materialRequestSlice";
 import cartReducer from "../features/cart/cartSlice";
+import activityReducer from "../features/activity/activitySlice";
 
 const persistConfig = {
   key: "user",
@@ -36,6 +37,7 @@ export const store = configureStore({
     rab: rabReducer,
     materialRequest: materialRequestReducer,
     cart: persistCartReducer,
+    activity: activityReducer,
   },
 });
 
