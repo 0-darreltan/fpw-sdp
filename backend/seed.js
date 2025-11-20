@@ -10,7 +10,7 @@ const {
   RAB,
   MaterialRequest,
   Cart,
-  Checkout,
+  CheckOut,
   ActivityLog,
 } = require("./src/models");
 
@@ -32,7 +32,7 @@ async function seed() {
       RAB.deleteMany(),
       MaterialRequest.deleteMany(),
       Cart.deleteMany(),
-      Checkout.deleteMany(),
+      CheckOut.deleteMany(),
       Order.deleteMany(),
       ActivityLog.deleteMany(),
     ]);
@@ -40,7 +40,7 @@ async function seed() {
     // Users
 
     const adminPw = await bcrypt.hash("admin123", 10);
-    const managerPw = await bcrypt.hash("manager123", 10);
+    const managerPw = await bcrypt.hash("12345678", 10);
     const customerPw = await bcrypt.hash("customer123", 10);
 
     const admin = await User.create({
@@ -52,7 +52,7 @@ async function seed() {
     });
 
     const pm = await User.create({
-      username: "pm",
+      username: "pm1",
       password: managerPw,
       role: "project_manager",
       name: "Project Manager",
@@ -60,7 +60,7 @@ async function seed() {
     });
 
     const customer = await User.create({
-      username: "customer",
+      username: "customer1",
       password: customerPw,
       role: "customer",
       name: "Customer Satu",
@@ -143,12 +143,21 @@ async function seed() {
     // ============================
     // 5. RAB
     // ============================
+    // 5. RAB
+    // ============================
     console.log("Seeding RAB...");
 
     const rab = await RAB.create({
       customerId: customer._id,
+      customerName: customer.name,
+      customerEmail: customer.email,
       projectId: project._id,
+      projectManagerId: pm._id,
+      projectManagerName: pm.name,
       title: "RAB Renovasi Tahap 1",
+      description: "Rencana Anggaran Biaya untuk renovasi rumah tahap pertama",
+      location: "Jakarta Selatan",
+      estimatedBudget: 50000000,
       items: [
         {
           description: "Pengecatan tembok",
@@ -158,7 +167,7 @@ async function seed() {
         },
       ],
       totalEstimated: 950000,
-      status: "submitted",
+      status: "pending",
     });
 
     // ============================
@@ -210,7 +219,7 @@ async function seed() {
     // ============================
     console.log("Seeding checkout...");
 
-    const checkout1 = await Checkout.create({
+    const checkout1 = await CheckOut.create({
       user: customer._id,
       orderType: "MATERIAL_PURCHASE",
       items: [
@@ -233,7 +242,7 @@ async function seed() {
       },
     });
 
-    const checkout2 = await Checkout.create({
+    const checkout2 = await CheckOut.create({
       user: customer._id,
       orderType: "PROJECT",
       rabId: rab._id,
@@ -324,9 +333,26 @@ async function seed() {
         icon: "🛒",
       },
     ]);
+
+    console.log("\nSeeding completed successfully!");
+    console.log("Admin credentials:");
+    console.log("  Username: admin");
+    console.log("  Password: admin123");
+    console.log("Project Manager credentials:");
+    console.log("  Username: pm1");
+    console.log("  Password: 12345678");
+    console.log("Customer credentials:");
+    console.log("  Username: customer1");
+    console.log("  Password: customer123");
+
+    await mongoose.disconnect();
+    console.log("Database connection closed.");
   } catch (error) {
-    console.error(err);
+    console.error("❌ Seeding failed:", error);
+    await mongoose.disconnect();
     process.exit(1);
   }
 }
+
+seed();
 
