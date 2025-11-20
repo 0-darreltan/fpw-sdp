@@ -7,6 +7,7 @@ import { actionOrder } from "../../features/order/orderSlice";
 import { actionProduct } from "../../features/product/productSlice";
 import { actionCart } from "../../features/cart/cartSlice";
 import { actionRab } from "../../features/RAB/rabSlice";
+import MaterialPurchaseForm from "../../components/materials/MaterialPurchaseForm";
 
 const CustomerDashboard = () => {
   const dispatch = useDispatch();
@@ -44,6 +45,7 @@ const CustomerDashboard = () => {
   const tabs = [
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
     { id: "order", label: "Buat Pesanan", icon: "📝" },
+    { id: "materials", label: "Beli Material", icon: "🛒" },
     { id: "history", label: "Riwayat Pesanan", icon: "📋" },
   ];
 
@@ -139,6 +141,9 @@ const CustomerDashboard = () => {
 
       case "history":
         return <OrderHistory user={currUsers?.user} orders={listOrders} />;
+
+      case "material":
+        return <MaterialPurchaseForm user={currUsers} />;
 
       default:
         return <ProductCatalog onAddToCart={handleAddFromCatalog} />;

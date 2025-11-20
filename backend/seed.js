@@ -1,127 +1,20 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
+
 const {
   User,
   Product,
   Project,
   Order,
   RAB,
-  Proposal,
+  MaterialRequest,
+  Cart,
+  Checkout,
+  ActivityLog,
 } = require("./src/models");
 
 const MONGO_URI = process.env.MONGO_URI;
-const databaseName = "db_agungbetonkendari";
-
-const initialData = {
-  users: [
-    {
-      id: 1,
-      username: "admin",
-      password: "admin123",
-      role: "admin",
-      name: "Administrator",
-      email: "admin@agungbeton.com",
-      access_token: "",
-      refresh_token: "",
-    },
-    {
-      id: 2,
-      username: "customer1",
-      password: "customer123",
-      role: "customer",
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "081234567890",
-      access_token: "",
-      refresh_token: "",
-    },
-    {
-      id: 3,
-      username: "pm1",
-      password: "12345678",
-      role: "project_manager",
-      name: "Jane Smith",
-      email: "jane@agungbeton.com",
-      phone: "081234567891",
-      access_token: "",
-      refresh_token: "",
-    },
-  ],
-  products: [
-    {
-      id: 1,
-      name: "Aspal & Marka Jalan",
-      category: "Aspal",
-      price: 500000,
-      unit: "ton",
-      stock: 100,
-      description: "Material aspal berkualitas tinggi untuk pembangunan jalan",
-    },
-    {
-      id: 2,
-      name: "Beton Readymix",
-      category: "Beton",
-      price: 800000,
-      unit: "m³",
-      stock: 100,
-      description: "Beton siap pakai dengan kualitas terjamin",
-    },
-    {
-      id: 3,
-      name: "Beton Precast",
-      category: "Beton",
-      price: 1200000,
-      unit: "unit",
-      stock: 50,
-      description: "Beton precast untuk berbagai keperluan konstruksi",
-    },
-    {
-      id: 4,
-      name: "Split / Batu Pecah",
-      category: "Agregat",
-      price: 300000,
-      unit: "m³",
-      stock: 100,
-      description: "Material agregat untuk campuran beton",
-    },
-    {
-      id: 5,
-      name: "Heavy Equipment Metal",
-      category: "Lainnya",
-      price: 627000000,
-      unit: "unit",
-      stock: 5,
-      description:
-        "mesin atau kendaraan berukuran besar yang dirancang khusus untuk melakukan pekerjaan berat, seperti konstruksi, pertambangan, dan pemindahan material",
-    },
-    {
-      id: 6,
-      category: "Lainnya",
-      name: "Bata Ringan",
-      price: 1500000,
-      unit: "m³",
-      stock: 200,
-      description:
-        "bahan bangunan yang lebih ringan dari bata konvensional, terbuat dari campuran semen, pasir silika, kapur, aluminium powder, dan air, yang menghasilkan gelembung udara untuk mengurangi beratnya",
-    },
-  ],
-
-  projects: [
-    {
-      id: 1,
-      name: "Pembangunan Jalan Raya Kendari",
-      location: "Kendari, Sulawesi Tenggara",
-      description: "Proyek pembangunan jalan raya sepanjang 5 km",
-      projectManagerId: 3,
-      status: "active",
-      startDate: "2025-01-15",
-      endDate: "2025-06-15",
-      budget: 5000000000,
-      createdAt: "2025-01-01T00:00:00.000Z",
-    },
-  ],
-};
 
 async function seed() {
   try {
@@ -129,78 +22,311 @@ async function seed() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to", MONGO_URI);
 
-    // Clear existing data
+    console.log("Connected to ", MONGO_URI);
+
     await Promise.all([
-      User.deleteMany({}),
-      Product.deleteMany({}),
-      Project.deleteMany({}),
-      Order.deleteMany({}),
-      RAB.deleteMany({}),
-      Proposal.deleteMany({}),
+      User.deleteMany(),
+      Product.deleteMany(),
+      Project.deleteMany(),
+      RAB.deleteMany(),
+      MaterialRequest.deleteMany(),
+      Cart.deleteMany(),
+      Checkout.deleteMany(),
+      Order.deleteMany(),
+      ActivityLog.deleteMany(),
     ]);
-    console.log("Cleared collections");
 
-    // Insert users (hash passwords)
-    const usersToInsert = await Promise.all(
-      initialData.users.map(async (u) => ({
-        username: u.username,
-        password: await bcrypt.hash(u.password, 10),
-        role: u.role,
-        name: u.name,
-        email: u.email,
-        phone: u.phone,
-        access_token: u.access_token,
-        refresh_token: u.refresh_token,
-      }))
-    );
+    // Users
 
-    const createdUsers = await User.insertMany(usersToInsert);
-    console.log("Inserted users:", createdUsers.length);
+    const adminPw = await bcrypt.hash("admin123", 10);
+    const managerPw = await bcrypt.hash("manager123", 10);
+    const customerPw = await bcrypt.hash("customer123", 10);
 
-    // Insert products
-    const createdProducts = await Product.insertMany(
-      initialData.products.map((p) => ({
-        name: p.name,
-        category: p.category,
-        price: p.price,
-        unit: p.unit,
-        stock: p.stock,
-        description: p.description,
-        status: p.status || "active",
-      }))
-    );
-    console.log("Inserted products:", createdProducts.length);
+    const admin = await User.create({
+      username: "admin",
+      password: adminPw,
+      role: "admin",
+      name: "Administrator",
+      email: "admin@mail.com",
+    });
 
-    // Insert projects mapping projectManagerId from users
-    const pmUser = createdUsers.find((u) => u.username === "pm1");
-    const projectsToInsert = initialData.projects.map((pr) => ({
-      name: pr.name,
-      location: pr.location,
-      description: pr.description,
-      projectManagerId: pmUser ? pmUser._id : undefined,
-      status: pr.status,
-      startDate: pr.startDate ? new Date(pr.startDate) : undefined,
-      endDate: pr.endDate ? new Date(pr.endDate) : undefined,
-      budget: pr.budget,
-      createdAt: pr.createdAt ? new Date(pr.createdAt) : undefined,
-    }));
+    const pm = await User.create({
+      username: "pm",
+      password: managerPw,
+      role: "project_manager",
+      name: "Project Manager",
+      email: "pm@mail.com",
+    });
 
-    const createdProjects = await Project.insertMany(projectsToInsert);
-    console.log("Inserted projects:", createdProjects.length);
+    const customer = await User.create({
+      username: "customer",
+      password: customerPw,
+      role: "customer",
+      name: "Customer Satu",
+      email: "customer@mail.com",
+    });
 
-    console.log("Seeding completed successfully");
-  } catch (err) {
-    console.error("Seeding error", err);
-  } finally {
-    await mongoose.disconnect();
-    console.log("Disconnected");
+    // Products
+
+    const products = await Product.insertMany([
+      {
+        name: "Aspal & Marka Jalan",
+        category: "Aspal",
+        price: 500000,
+        unit: "ton",
+        stock: 100,
+        description:
+          "Material aspal berkualitas tinggi untuk pembangunan jalan",
+      },
+      {
+        name: "Beton Readymix",
+        category: "Beton",
+        price: 800000,
+        unit: "m³",
+        stock: 100,
+        description: "Beton siap pakai dengan kualitas terjamin",
+      },
+      {
+        name: "Beton Precast",
+        category: "Beton",
+        price: 1200000,
+        unit: "unit",
+        stock: 50,
+        description: "Beton precast untuk berbagai keperluan konstruksi",
+      },
+      {
+        name: "Split / Batu Pecah",
+        category: "Agregat",
+        price: 300000,
+        unit: "m³",
+        stock: 100,
+        description: "Material agregat untuk campuran beton",
+      },
+      {
+        name: "Heavy Equipment Metal",
+        category: "Lainnya",
+        price: 627000000,
+        unit: "unit",
+        stock: 5,
+        description:
+          "mesin atau kendaraan berukuran besar yang dirancang khusus untuk melakukan pekerjaan berat, seperti konstruksi, pertambangan, dan pemindahan material",
+      },
+      {
+        name: "Bata Ringan",
+        category: "Lainnya",
+        price: 1500000,
+        unit: "m³",
+        stock: 200,
+        description:
+          "bahan bangunan yang lebih ringan dari bata konvensional, terbuat dari campuran semen, pasir silika, kapur, aluminium powder, dan air, yang menghasilkan gelembung udara untuk mengurangi beratnya",
+      },
+    ]);
+
+    console.log("Products inserted: ", products.length);
+
+    // ============================
+    // 4. PROJECT
+    // ============================
+    console.log("Seeding project...");
+
+    const project = await Project.create({
+      name: "Renovasi Rumah Pak Budi",
+      location: "Jakarta",
+      description: "Renovasi full interior",
+      projectManagerId: pm._id,
+      status: "ongoing",
+      startDate: new Date(),
+      budget: 50000000,
+    });
+
+    // ============================
+    // 5. RAB
+    // ============================
+    console.log("Seeding RAB...");
+
+    const rab = await RAB.create({
+      customerId: customer._id,
+      projectId: project._id,
+      title: "RAB Renovasi Tahap 1",
+      items: [
+        {
+          description: "Pengecatan tembok",
+          qty: 10,
+          unit: "kaleng",
+          unitPrice: 95000,
+        },
+      ],
+      totalEstimated: 950000,
+      status: "submitted",
+    });
+
+    // ============================
+    // 7. MATERIAL REQUEST
+    // ============================
+    console.log("Seeding material request...");
+
+    const mr = await MaterialRequest.create({
+      projectId: project._id,
+      projectName: project.name,
+      requesterId: pm._id,
+      requesterName: pm.name,
+      requesterEmail: pm.email,
+      requestReason: "Kebutuhan pengecatan awal",
+      urgencyLevel: "normal",
+      items: [
+        {
+          productId: products[2]._id,
+          productName: products[2].name,
+          quantity: 5,
+          unit: products[2].unit,
+          price: products[2].price,
+          subtotal: 5 * products[2].price,
+          availableStock: products[2].stock,
+          stockStatus: "sufficient",
+          notes: "Untuk dinding ruang tamu",
+        },
+      ],
+      total: 5 * products[2].price,
+    });
+
+    // ============================
+    // 8. CART
+    // ============================
+    console.log("Seeding cart...");
+
+    const cart = await Cart.create({
+      user: customer._id,
+      items: [
+        {
+          productId: products[0]._id,
+          quantity: 2,
+        },
+      ],
+    });
+
+    // ============================
+    // 9. CHECKOUT
+    // ============================
+    console.log("Seeding checkout...");
+
+    const checkout1 = await Checkout.create({
+      user: customer._id,
+      orderType: "MATERIAL_PURCHASE",
+      items: [
+        {
+          productId: products[0]._id,
+          productName: products[0].name,
+          priceAtCheckout: products[0].price,
+          quantity: 2,
+          unit: products[0].unit,
+        },
+      ],
+      subtotal: products[0].price * 2,
+      total: products[0].price * 2,
+      deliveryAddress: {
+        street: "Jl. Sudirman",
+        city: "Jakarta",
+        province: "DKI Jakarta",
+        postalCode: "12345",
+        country: "Indonesia",
+      },
+    });
+
+    const checkout2 = await Checkout.create({
+      user: customer._id,
+      orderType: "PROJECT",
+      rabId: rab._id,
+      items: [
+        {
+          productId: products[2]._id,
+          productName: products[2].name,
+          priceAtCheckout: products[2].price,
+          quantity: 10,
+        },
+      ],
+      subtotal: products[2].price * 10,
+      total: products[2].price * 10,
+      deliveryAddress: {
+        street: "Jl. Asia Afrika",
+        city: "Bandung",
+        province: "Jawa Barat",
+        postalCode: "66666",
+        country: "Indonesia",
+      },
+    });
+
+    // ============================
+    // 10. ORDERS
+    // ============================
+    console.log("Seeding orders...");
+
+    await Order.create({
+      orderNumber: "ORD-001",
+      checkoutId: checkout1._id,
+      customerId: customer._id,
+      orderType: "MATERIAL_PURCHASE",
+      totalAmount: checkout1.total,
+      status: "payment_confirmed",
+    });
+
+    await Order.create({
+      orderNumber: "ORD-002",
+      checkoutId: checkout2._id,
+      customerId: customer._id,
+      orderType: "PROJECT",
+      rabId: rab._id,
+      totalAmount: checkout2.total,
+      status: "payment_confirmed",
+    });
+
+    // ============================
+    // 11. ACTIVITY LOGS
+    // ============================
+    console.log("Seeding activity logs...");
+
+    await ActivityLog.insertMany([
+      {
+        type: "user_registered",
+        title: "Admin Created",
+        description: "Admin account added via seeder",
+        userId: admin._id,
+        userName: admin.name,
+        userRole: admin.role,
+        icon: "👮‍♂️",
+      },
+      {
+        type: "project_created",
+        title: "New Project",
+        description: "Project created via seeder",
+        userId: pm._id,
+        userName: pm.name,
+        userRole: pm.role,
+        projectId: project._id,
+        icon: "🏗️",
+      },
+      {
+        type: "product_created",
+        title: "Product Added",
+        description: "Sample product added",
+        userId: admin._id,
+        userName: admin.name,
+        userRole: admin.role,
+        icon: "📦",
+      },
+      {
+        type: "order_created",
+        title: "Order Created",
+        description: "Customer created an order",
+        userId: customer._id,
+        userName: customer.name,
+        userRole: customer.role,
+        icon: "🛒",
+      },
+    ]);
+  } catch (error) {
+    console.error(err);
+    process.exit(1);
   }
 }
 
-if (require.main === module) {
-  seed();
-}
-
-module.exports = seed;

@@ -31,7 +31,6 @@ const router = createBrowserRouter(
         <Route path="about" element={<AboutUs />} />
         <Route path="certification" element={<Sertificat />} />
         <Route path="catalog" element={<ShopCatalog />} />
-        <Route path="catalog" element={<ShopCatalog />} />
         <Route path="catalog/:id" element={<DetailCatalog />} />
       </Route>
 

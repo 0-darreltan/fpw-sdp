@@ -4,7 +4,6 @@ import MaterialRequest from "../../components/materials/MaterialRequest";
 import ProjectList from "../../components/projects/ProjectList";
 import { actionProject } from "../../features/project/projectSlice";
 import { actionProduct } from "../../features/product/productSlice";
-import { actionProposal } from "../../features/proposal/proposalSlice";
 import { actionOrder } from "../../features/order/orderSlice";
 import { actionRab } from "../../features/RAB/rabSlice";
 import api from "../../features/api";
@@ -15,27 +14,15 @@ const ProjectManagerDashboard = ({
   products,
   materials,
   rabs,
-  proposals,
-  onAddProposal,
-  onUpdateProposal,
-  onSendProposal,
   onUpdateRAB,
   onAddProject,
   onUpdateProject,
   onAddMaterialRequest,
 }) => {
   const [activeTab, setActiveTab] = useState("projects");
-  const [proposalsFetched, setProposalsFetched] = useState(false);
   const [rabsFetched, setRabsFetched] = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
 
-  // RAB / proposal local UI state
-  const [selectedRAB, setSelectedRAB] = useState(null);
-  const [proposalItems, setProposalItems] = useState([]);
-  const [pItemName, setPItemName] = useState("");
-  const [pItemQty, setPItemQty] = useState(1);
-  const [pItemPrice, setPItemPrice] = useState(0);
-  const [proposalNote, setProposalNote] = useState("");
   // Project add/edit state
   const [editingProject, setEditingProject] = useState(null);
   const [projectForm, setProjectForm] = useState({
@@ -54,7 +41,7 @@ const ProjectManagerDashboard = ({
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return date.toISOString().split('T')[0];
+      return date.toISOString().split("T")[0];
     } catch {
       return "";
     }
@@ -70,15 +57,12 @@ const ProjectManagerDashboard = ({
   const projectsError = useSelector((s) => s.project.error);
   const rawProducts = useSelector((s) => s.product.listProducts) || [];
   const productsLoading = useSelector((s) => s.product.loading);
-  const rawProposalsFromStore = useSelector((s) => s.proposal.listProposals);
-  const rawProposals = Array.isArray(rawProposalsFromStore) ? rawProposalsFromStore : [];
-  const proposalsLoading = useSelector((s) => s.proposal.loading);
   const rawRabsFromStore = useSelector((s) => s.rab.listRabs);
   const rawRabs = Array.isArray(rawRabsFromStore) ? rawRabsFromStore : [];
-  const rabsLoading = useSelector((s) => s.rab.loading);
-  
+
   // Check if essential initial data is still loading (only projects and products)
-  const isLoadingInitialData = !initialFetchDone && (projectsLoading || productsLoading);
+  const isLoadingInitialData =
+    !initialFetchDone && (projectsLoading || productsLoading);
 
   // normalize backend objects to the shape used by this component
   const normProjects = rawProjects.map((p) => ({
@@ -102,29 +86,22 @@ const ProjectManagerDashboard = ({
     ...pr,
   }));
 
-  const normProposals = Array.isArray(rawProposals) ? rawProposals.map((pf) => ({
-    id: pf._id || pf.id,
-    projectName: pf.projectName || pf.rabId?.projectId?.name || "",
-    createdAt: pf.createdAt,
-    total: pf.total,
-    status: pf.status,
-    ...pf,
-  })) : [];
-
-  const normRabs = Array.isArray(rawRabs) ? rawRabs.map((r) => ({
-    id: r._id || r.id,
-    projectName: r.title || r.projectName || "",
-    description: r.description || "",
-    customerId: r.customerId && (r.customerId._id || r.customerId),
-    location: r.location || "",
-    items: r.items || [],
-    totalEstimate: r.totalEstimated || r.totalEstimate || 0,
-    status: r.status,
-    createdAt: r.createdAt,
-    proposedPrice: r.proposedPrice,
-    agreedPrice: r.agreedPrice,
-    ...r,
-  })) : [];
+  const normRabs = Array.isArray(rawRabs)
+    ? rawRabs.map((r) => ({
+        id: r._id || r.id,
+        projectName: r.title || r.projectName || "",
+        description: r.description || "",
+        customerId: r.customerId && (r.customerId._id || r.customerId),
+        location: r.location || "",
+        items: r.items || [],
+        totalEstimate: r.totalEstimated || r.totalEstimate || 0,
+        status: r.status,
+        createdAt: r.createdAt,
+        proposedPrice: r.proposedPrice,
+        agreedPrice: r.agreedPrice,
+        ...r,
+      }))
+    : [];
 
   // Expose data either from props (parent) or from store
 
@@ -144,19 +121,11 @@ const ProjectManagerDashboard = ({
         setInitialFetchDone(true); // Still set to true to prevent infinite loading
       }
     };
-    
+
     if (!initialFetchDone) {
       fetchAllData();
     }
   }, [initialFetchDone, dispatch]);
-
-  // Lazy load proposals when proposals tab is active
-  useEffect(() => {
-    if (activeTab === "proposals" && !proposalsFetched) {
-      dispatch(actionProposal.fetchProposals());
-      setProposalsFetched(true);
-    }
-  }, [activeTab, proposalsFetched, dispatch]);
 
   // Lazy load rabs when rabs tab is active
   useEffect(() => {
@@ -176,15 +145,16 @@ const ProjectManagerDashboard = ({
       return res;
     } catch (err) {
       console.error("Failed to create project", err);
-      showToast("Gagal menambahkan proyek: " + (err.message || "Unknown error"), "error");
+      showToast(
+        "Gagal menambahkan proyek: " + (err.message || "Unknown error"),
+        "error"
+      );
     }
   };
 
   // If parent didn't pass props, fallback the param variables to our normalized data
   projects = projects || normProjects;
   products = products || normProducts;
-  proposals = typeof proposals !== "undefined" ? proposals : normProposals;
-  materials = typeof materials !== "undefined" ? materials : normProducts;
   rabs = rabs || normRabs;
 
   // Use our handlers when parent didn't pass handlers (assigned after handlers defined)
@@ -200,44 +170,10 @@ const ProjectManagerDashboard = ({
     } catch (err) {
       console.error("Failed to update project", err);
       console.error("Error response:", err.response?.data);
-      showToast("Gagal memperbarui proyek: " + (err.message || "Unknown error"), "error");
-    }
-  };
-
-  const handleAddProposal = async (payload) => {
-    try {
-      const res = await dispatch(
-        actionProposal.createProposal(payload)
-      ).unwrap();
-      return res;
-    } catch (err) {
-      console.error("Failed to create proposal", err);
-    }
-  };
-
-  const handleUpdateProposal = async (payload) => {
-    try {
-      const res = await dispatch(
-        actionProposal.updateProposal(payload)
-      ).unwrap();
-      return res;
-    } catch (err) {
-      console.error("Failed to update proposal", err);
-    }
-  };
-
-  const handleSendProposal = async (id) => {
-    try {
-      // set status to sent
-      const existing = rawProposals.find((p) => (p._id || p.id) === id);
-      if (!existing) return;
-      const payload = { ...(existing || {}), status: "sent" };
-      const res = await dispatch(
-        actionProposal.updateProposal(payload)
-      ).unwrap();
-      return res;
-    } catch (err) {
-      console.error("Failed to send proposal", err);
+      showToast(
+        "Gagal memperbarui proyek: " + (err.message || "Unknown error"),
+        "error"
+      );
     }
   };
 
@@ -255,31 +191,6 @@ const ProjectManagerDashboard = ({
     );
   };
 
-  const handleAcceptProposal = async (id) => {
-    try {
-      const res = await api.post(`/users/accept-proposal`, { proposalId: id });
-      showToast("Proposal berhasil disetujui", "success");
-      // refresh proposals
-      dispatch(actionProposal.fetchProposals());
-      return res.data;
-    } catch (err) {
-      console.error("accept error", err);
-      showToast("Gagal menyetujui proposal", "error");
-    }
-  };
-
-  const handleRejectProposal = async (id) => {
-    try {
-      const res = await api.post(`/users/reject-proposal`, { proposalId: id });
-      showToast("Proposal berhasil ditolak", "success");
-      dispatch(actionProposal.fetchProposals());
-      return res.data;
-    } catch (err) {
-      console.error("reject error", err);
-      showToast("Gagal menolak proposal", "error");
-    }
-  };
-
   const handleAddMaterialRequest = async (payload) => {
     try {
       const res = await dispatch(actionOrder.createOrder(payload)).unwrap();
@@ -292,10 +203,8 @@ const ProjectManagerDashboard = ({
   // Use final handlers - either from props or local
   const finalAddProject = onAddProject || handleAddProject;
   const finalUpdateProject = onUpdateProject || handleUpdateProject;
-  const finalAddProposal = onAddProposal || handleAddProposal;
-  const finalUpdateProposal = onUpdateProposal || handleUpdateProposal;
-  const finalSendProposal = onSendProposal || handleSendProposal;
-  const finalAddMaterialRequest = onAddMaterialRequest || handleAddMaterialRequest;
+  const finalAddMaterialRequest =
+    onAddMaterialRequest || handleAddMaterialRequest;
 
   const tabs = [
     { id: "projects", label: "Proyek Saya", icon: "🏗️" },
@@ -401,19 +310,19 @@ const ProjectManagerDashboard = ({
                         ...projectForm,
                         projectManagerId: user?.id || user?._id,
                       };
-                      
+
                       try {
                         if (editingProject?.id) {
                           // existing project update
-                          await finalUpdateProject({ 
+                          await finalUpdateProject({
                             ...payload,
-                            id: editingProject.id 
+                            id: editingProject.id,
                           });
                         } else {
                           // create new project
                           await finalAddProject(payload);
                         }
-                        
+
                         // Reset form after success
                         setEditingProject(null);
                         setProjectForm({
@@ -453,7 +362,7 @@ const ProjectManagerDashboard = ({
                 Tambah Proyek
               </button>
             </div>
-            
+
             {/* Loading State */}
             {projectsLoading && (
               <div className="text-center py-8">
@@ -461,7 +370,7 @@ const ProjectManagerDashboard = ({
                 <p className="text-gray-600">Memuat data proyek...</p>
               </div>
             )}
-            
+
             {/* Error State */}
             {projectsError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -476,7 +385,7 @@ const ProjectManagerDashboard = ({
                 </button>
               </div>
             )}
-            
+
             {/* Project List */}
             {!projectsLoading && !projectsError && (
               <ProjectList
@@ -485,9 +394,16 @@ const ProjectManagerDashboard = ({
                 onEditProject={(p) => {
                   setEditingProject(p || {});
                   // Validate status - only use if it's a valid value
-                  const validStatuses = ["planned", "in-progress", "completed", "cancelled"];
-                  const validStatus = validStatuses.includes(p?.status) ? p.status : "planned";
-                  
+                  const validStatuses = [
+                    "planned",
+                    "in-progress",
+                    "completed",
+                    "cancelled",
+                  ];
+                  const validStatus = validStatuses.includes(p?.status)
+                    ? p.status
+                    : "planned";
+
                   setProjectForm({
                     name: p?.name || "",
                     location: p?.location || "",
@@ -547,16 +463,6 @@ const ProjectManagerDashboard = ({
                           <span className="font-medium">{r.status}</span>
                         </div>
                         <div className="flex gap-2">
-                          <button
-                            className="px-3 py-2 bg-blue-600 text-white rounded"
-                            onClick={() => {
-                              setSelectedRAB(r);
-                              setProposalItems([]);
-                              setProposalNote("");
-                            }}
-                          >
-                            Buat Penawaran
-                          </button>
                           {onUpdateRAB && (
                             <>
                               <button
@@ -679,206 +585,6 @@ const ProjectManagerDashboard = ({
                     </div>
                   </div>
                 ))
-              )}
-            </div>
-
-            {selectedRAB && (
-              <div className="mt-4 border rounded p-4 bg-gray-50">
-                <h4 className="font-medium">
-                  Buat Penawaran untuk: {selectedRAB.projectName}
-                </h4>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input
-                    className="border rounded p-2"
-                    placeholder="Nama item"
-                    value={pItemName}
-                    onChange={(e) => setPItemName(e.target.value)}
-                  />
-                  <input
-                    className="border rounded p-2"
-                    type="number"
-                    min={1}
-                    value={pItemQty}
-                    onChange={(e) => setPItemQty(Number(e.target.value))}
-                  />
-                  <input
-                    className="border rounded p-2"
-                    type="number"
-                    min={0}
-                    value={pItemPrice}
-                    onChange={(e) => setPItemPrice(Number(e.target.value))}
-                  />
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <button
-                    className="px-3 py-2 bg-green-600 text-white rounded"
-                    onClick={() => {
-                      if (!pItemName) return;
-                      setProposalItems((prev) => [
-                        ...prev,
-                        { name: pItemName, qty: pItemQty, price: pItemPrice },
-                      ]);
-                      setPItemName("");
-                      setPItemQty(1);
-                      setPItemPrice(0);
-                    }}
-                  >
-                    Tambah Item
-                  </button>
-                  <button
-                    className="px-3 py-2 bg-gray-300 rounded"
-                    onClick={() => setSelectedRAB(null)}
-                  >
-                    Batal
-                  </button>
-                </div>
-
-                <div className="mt-3">
-                  <h5 className="font-medium">Item Penawaran</h5>
-                  {proposalItems.length === 0 ? (
-                    <div className="text-sm text-gray-500">Belum ada item.</div>
-                  ) : (
-                    <ul className="space-y-2 mt-2">
-                      {proposalItems.map((it, i) => (
-                        <li
-                          key={i}
-                          className="flex justify-between items-center bg-white border p-2 rounded"
-                        >
-                          <div>
-                            <div className="font-medium">{it.name}</div>
-                            <div className="text-sm text-gray-600">
-                              {it.qty} x Rp {it.price?.toLocaleString()}
-                            </div>
-                          </div>
-                          <button
-                            className="text-red-600 text-sm"
-                            onClick={() =>
-                              setProposalItems((prev) =>
-                                prev.filter((_, idx) => idx !== i)
-                              )
-                            }
-                          >
-                            Hapus
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="mt-3">
-                  <textarea
-                    className="w-full border rounded p-2"
-                    rows={3}
-                    placeholder="Catatan penawaran"
-                    value={proposalNote}
-                    onChange={(e) => setProposalNote(e.target.value)}
-                  />
-                </div>
-
-                <div className="mt-3 flex justify-end gap-2">
-                  <button
-                    className="px-4 py-2 bg-blue-600 text-white rounded"
-                    onClick={() => {
-                      const total = proposalItems.reduce(
-                        (s, it) => s + it.qty * (it.price || 0),
-                        0
-                      );
-                      const payload = {
-                        rabId: selectedRAB.id,
-                        projectName: selectedRAB.projectName,
-                        pmId: user?.id,
-                        items: proposalItems,
-                        total: total,
-                        note: proposalNote,
-                      };
-                      if (finalAddProposal) {
-                        const created = finalAddProposal(payload);
-                        // optionally send immediately
-                        if (created && finalSendProposal) {
-                          finalSendProposal(created.id);
-                        }
-                      }
-                      // reset form
-                      setSelectedRAB(null);
-                      setProposalItems([]);
-                      setProposalNote("");
-                    }}
-                  >
-                    Buat & Kirim Penawaran
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6">
-              <h4 className="text-lg font-medium">Penawaran Terbaru</h4>
-              {proposals.length === 0 ? (
-                <div className="text-gray-500 mt-2">Belum ada penawaran.</div>
-              ) : (
-                <div className="space-y-3 mt-3">
-                  {proposals.map((p) => (
-                    <div
-                      key={p.id}
-                      className="border rounded p-3 bg-white flex justify-between items-start"
-                    >
-                      <div>
-                        <div className="font-medium">
-                          Penawaran untuk: {p.projectName}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Dibuat: {new Date(p.createdAt).toLocaleString()}
-                        </div>
-                        <div className="text-sm">
-                          Total: Rp {Number(p.total || 0).toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Status: {p.status}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        {onUpdateProposal && (
-                          <button
-                            className="px-3 py-1 bg-yellow-500 text-white rounded"
-                            onClick={() =>
-                              finalUpdateProposal({ ...p, status: "approved" })
-                            }
-                          >
-                            Tandai Disetujui
-                          </button>
-                        )}
-                        {finalSendProposal && p.status !== "sent" && (
-                          <button
-                            className="px-3 py-1 bg-blue-600 text-white rounded"
-                            onClick={() => finalSendProposal(p.id)}
-                          >
-                            Kirim
-                          </button>
-                        )}
-                        {/* Accept / Reject - only visible to customer or admin */}
-                        {(user?.role === "Administrator" ||
-                          ((user?.id || user?._id) &&
-                            (user?.id || user?._id) ===
-                              (p.customerId?._id || p.customerId))) && (
-                          <>
-                            <button
-                              className="px-3 py-1 bg-green-600 text-white rounded"
-                              onClick={() => handleAcceptProposal(p.id)}
-                            >
-                              Setujui
-                            </button>
-                            <button
-                              className="px-3 py-1 bg-red-600 text-white rounded"
-                              onClick={() => handleRejectProposal(p.id)}
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
           </div>

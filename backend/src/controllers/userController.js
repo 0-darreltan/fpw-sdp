@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User, Proposal, RAB, Project } = require("../models");
+const { User, RAB, Project } = require("../models");
 const bcrypt = require("bcryptjs");
 
 // ✅ GET semua user (Admin only)
@@ -44,7 +44,6 @@ const LoginUser = async (req, res) => {
       { expiresIn: "2h" }
     );
 
-
     user.access_token = token;
     await user.save();
 
@@ -80,9 +79,9 @@ const RegisterUser = async (req, res) => {
       return res.status(409).json({ message: "User already exists" });
 
     const roleMapping = {
-      "Customer": "customer",
+      Customer: "customer",
       "Project Manager": "project_manager",
-      "Administrator": "admin"
+      Administrator: "admin",
     };
     const dbRole = roleMapping[role] || "customer";
 
@@ -113,27 +112,30 @@ const RegisterUser = async (req, res) => {
       .json({ message: "User registered successfully", user: userSafe });
   } catch (error) {
     console.error("RegisterUser error:", error);
-    
+
     // Handle specific MongoDB errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(409).json({ 
-        message: `${field} already exists. Please use a different ${field}.` 
+      return res.status(409).json({
+        message: `${field} already exists. Please use a different ${field}.`,
       });
     }
-    
+
     // Handle validation errors
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
         message: "Validation error",
-        errors: messages 
+        errors: messages,
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: "Internal Server Error",
-      error: process.env.NODE_ENV === "development" ? error.message : "An error occurred" 
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "An error occurred",
     });
   }
 };
@@ -148,24 +150,24 @@ const createUser = async (req, res) => {
 
     // Convert role from frontend format to database format
     const roleMapping = {
-      "Customer": "customer",
+      Customer: "customer",
       "Project Manager": "project_manager",
-      "Administrator": "admin"
+      Administrator: "admin",
     };
     const dbRole = roleMapping[role] || role;
 
     // Hash password before saving
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({ 
-      username, 
-      password: hashedPassword, 
-      role: dbRole, 
-      name, 
-      email, 
+    const user = new User({
+      username,
+      password: hashedPassword,
+      role: dbRole,
+      name,
+      email,
       phone,
       access_token: "",
-      refresh_token: ""
+      refresh_token: "",
     });
     await user.save();
 
@@ -182,27 +184,30 @@ const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error("createUser error:", error);
-    
+
     // Handle specific MongoDB errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      return res.status(409).json({ 
-        message: `${field} already exists. Please use a different ${field}.` 
+      return res.status(409).json({
+        message: `${field} already exists. Please use a different ${field}.`,
       });
     }
-    
+
     // Handle validation errors
     if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
+      const messages = Object.values(error.errors).map((err) => err.message);
+      return res.status(400).json({
         message: "Validation error",
-        errors: messages 
+        errors: messages,
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: "Internal Server Error",
-      error: process.env.NODE_ENV === "development" ? error.message : "An error occurred" 
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "An error occurred",
     });
   }
 };
@@ -210,18 +215,20 @@ const createUser = async (req, res) => {
 // ✅ UPDATE user (user sendiri atau admin)
 const updateUser = async (req, res) => {
   try {
-    console.log("updateUser called by:", req.user.username, "| role:", req.user.role);
+    console.log(
+      "updateUser called by:",
+      req.user.username,
+      "| role:",
+      req.user.role
+    );
     console.log("Target user ID:", req.params.id);
     console.log("Current user ID:", req.user._id);
-    
+
     const targetId = req.params.id || req.user._id;
     const updates = { ...req.body };
 
     // Hanya admin atau user sendiri yang bisa update
-    if (
-      req.user.role !== "admin" &&
-      req.user._id.toString() !== targetId
-    ) {
+    if (req.user.role !== "admin" && req.user._id.toString() !== targetId) {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -263,106 +270,6 @@ const LogOutUser = (req, res) => {
   res.status(200).json({ message: "User logged out successfully" });
 };
 
-const acceptProposal = async (req, res) => {
-  try {
-    const { proposalId } = req.body;
-    if (!proposalId)
-      return res
-        .status(400)
-        .json({ message: "proposalId is required in request body" });
-
-    const proposal = await Proposal.findById(proposalId);
-    if (!proposal)
-      return res.status(404).json({ message: "Proposal not found" });
-
-    // Only the customer who owns the proposal or an admin can accept
-    if (
-      req.user.role !== "admin" &&
-      proposal.customerId.toString() !== req.user._id.toString()
-    ) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    // Prevent re-approving
-    if (proposal.status === "approved")
-      return res.status(400).json({ message: "Proposal already approved" });
-
-    // Mark proposal as approved
-    proposal.status = "approved";
-    // optional: mark sentAt if not set
-    if (!proposal.sentAt) proposal.sentAt = new Date();
-
-    // Ensure related RAB exists and, if there's no project yet, create one
-    const rab = await RAB.findById(proposal.rabId);
-    if (rab && !rab.projectId) {
-      const project = new Project({
-        name: rab.title || `Project from RAB ${rab._id}`,
-        location: "",
-        description: rab.title || "",
-        projectManagerId: proposal.projectManagerId,
-        status: "active",
-        startDate: new Date(),
-        budget: proposal.total || 0,
-      });
-      await project.save();
-
-      rab.projectId = project._id;
-      await rab.save();
-    }
-
-    await proposal.save();
-
-    res
-      .status(200)
-      .json({ message: "Proposal accepted successfully", data: proposal });
-  } catch (error) {
-    console.error("acceptProposal error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error: " + error.message });
-  }
-};
-
-const rejectProposal = async (req, res) => {
-  try {
-    const { proposalId } = req.body;
-    if (!proposalId)
-      return res
-        .status(400)
-        .json({ message: "proposalId is required in request body" });
-
-    const proposal = await Proposal.findById(proposalId);
-    if (!proposal)
-      return res.status(404).json({ message: "Proposal not found" });
-
-    // Only the customer who owns the proposal or an admin can reject
-    if (
-      req.user.role !== "admin" &&
-      proposal.customerId.toString() !== req.user._id.toString()
-    ) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    // Prevent re-rejecting
-    if (proposal.status === "rejected")
-      return res.status(400).json({ message: "Proposal already rejected" });
-
-    proposal.status = "rejected";
-    if (!proposal.sentAt) proposal.sentAt = new Date();
-
-    await proposal.save();
-
-    res
-      .status(200)
-      .json({ message: "Proposal rejected successfully", data: proposal });
-  } catch (error) {
-    console.error("rejectProposal error:", error);
-    res
-      .status(500)
-      .json({ message: "Internal Server Error: " + error.message });
-  }
-};
-
 module.exports = {
   getUser,
   getUserById,
@@ -372,6 +279,4 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
-  acceptProposal,
-  rejectProposal,
 };

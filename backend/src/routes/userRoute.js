@@ -10,8 +10,6 @@ const {
   createUser,
   updateUser,
   deleteUser,
-  acceptProposal,
-  rejectProposal,
 } = require("../controllers/userController");
 
 // 🔐 Middleware
@@ -34,8 +32,6 @@ console.log("[userRoute] imports:", {
   createUser: typeof createUser,
   updateUser: typeof updateUser,
   deleteUser: typeof deleteUser,
-  acceptProposal: typeof acceptProposal,
-  rejectProposal: typeof rejectProposal,
 });
 
 // ✅ Public routes (tidak butuh token)
@@ -55,8 +51,4 @@ router.put("/:id", authMiddleware, cekProjectManager, updateUser);
 
 // ❌ Delete user (hanya Admin)
 router.delete("/:id", authMiddleware, cekAdmin, deleteUser);
-
-router.post("/accept-proposal", authMiddleware, acceptProposal);
-router.post("/reject-proposal", authMiddleware, rejectProposal);
-
 module.exports = router;

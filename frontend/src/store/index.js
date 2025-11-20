@@ -2,7 +2,6 @@ import { configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 import userReducer from "../features/users/userSlice";
-import proposalReducer from "../features/proposal/proposalSlice";
 import projectReducer from "../features/project/projectSlice";
 import productReducer from "../features/product/productSlice";
 import orderReducer from "../features/order/orderSlice";
@@ -37,7 +36,6 @@ const persistCartReducer = persistReducer(cartPersistConfig, cartReducer);
 export const store = configureStore({
   reducer: {
     users: persistUserReducer,
-    proposal: proposalReducer,
     project: projectReducer,
     product: productReducer,
     order: orderReducer,
