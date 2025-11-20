@@ -531,7 +531,7 @@ const ProjectManagerDashboard = ({
                           {r.description}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Diajukan oleh user #{r.customerId} •{" "}
+                          Diajukan oleh {r.customerName || r.customerId?.name || `user #${r.customerId?._id || r.customerId}`} •{" "}
                           {r.createdAt
                             ? new Date(r.createdAt).toLocaleString()
                             : "-"}

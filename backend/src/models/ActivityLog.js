@@ -13,6 +13,11 @@ const activityLogSchema = new mongoose.Schema(
         "product_updated",
         "user_registered",
         "order_created",
+        "rab_request_created",
+        "rab_assigned",
+        "rab_quoted",
+        "rab_accepted",
+        "rab_rejected",
       ],
       required: true,
     },
@@ -55,6 +60,11 @@ const activityLogSchema = new mongoose.Schema(
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
+    },
+    // Untuk RAB activities
+    rabId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RAB",
     },
     icon: {
       type: String,

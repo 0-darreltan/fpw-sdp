@@ -1,23 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const {
-    fecthCart,
-    addToCart,
-    updateCartQuantity,
-    deleteCartItems,
-    clearCart,
-} = require("../controllers/orderController");
+  getCart,
+  upsertItemInCart,
+  deleteItemFromCart,
+  clearCart,
+} = require("../controllers/cartController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
-const {
-  cekProjectManager,
-  cekAdmin,
-} = require("../middlewares/roleMiddleware");
 
-router.get("/", authMiddleware, getOrder);
-router.get("/:id", authMiddleware, getOrderById);
-router.post("/", authMiddleware, cekProjectManager, createOrder);
-router.put("/:id", authMiddleware, cekProjectManager, updateOrder);
-router.delete("/:id", authMiddleware, cekAdmin, deleteOrder);
+// Get keranjang user yang login
+router.get("/", authMiddleware, getCart);
+
+// Tambah/Update item di keranjang
+router.post("/", authMiddleware, upsertItemInCart);
+
+// Hapus satu item dari keranjang
+router.delete("/:productId", authMiddleware, deleteItemFromCart);
+
+// Kosongkan keranjang
+router.delete("/clear/all", authMiddleware, clearCart);
 
 module.exports = router;

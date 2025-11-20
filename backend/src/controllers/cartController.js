@@ -25,8 +25,23 @@ const getCart = async (req, res) => {
 // ✅ Tambah/Update item di keranjang
 const upsertItemInCart = async (req, res) => {
   try {
-    const { productId, quantity } = req.body;
+    const { productId, quantity, replaceQuantity } = req.body;
     const userId = req.user.id;
+
+    // Validasi input
+    if (!productId || !quantity) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "ProductId and quantity are required." 
+      });
+    }
+
+    if (quantity < 1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Quantity must be at least 1." 
+      });
+    }
 
     // Pastikan produk ada
     const product = await Product.findById(productId);
@@ -48,11 +63,17 @@ const upsertItemInCart = async (req, res) => {
     );
 
     if (itemIndex > -1) {
-      // Jika ada, update jumlahnya
-      cart.items[itemIndex].quantity = quantity;
+      // Jika ada, cek apakah replace atau increment
+      if (replaceQuantity === true) {
+        // Replace: ganti dengan quantity baru (untuk update dari form)
+        cart.items[itemIndex].quantity = parseInt(quantity);
+      } else {
+        // Increment: tambahkan ke quantity yang sudah ada (untuk add to cart)
+        cart.items[itemIndex].quantity += parseInt(quantity);
+      }
     } else {
       // Jika tidak ada, tambahkan item baru
-      cart.items.push({ productId, quantity });
+      cart.items.push({ productId, quantity: parseInt(quantity) });
     }
 
     // Hapus item jika quantity <= 0

@@ -6,6 +6,7 @@ import ProductCatalog from "../../components/products/ProductCatalog";
 import { actionOrder } from "../../features/order/orderSlice";
 import { actionProduct } from "../../features/product/productSlice";
 import { actionCart } from "../../features/cart/cartSlice";
+import { actionRab } from "../../features/RAB/rabSlice";
 
 const CustomerDashboard = () => {
   const dispatch = useDispatch();
@@ -25,7 +26,7 @@ const CustomerDashboard = () => {
   useEffect(() => {
     dispatch(actionProduct.fetchProduct());
 
-    if (currUsers?.id) {
+    if (currUsers?.user?.id) {
       dispatch(actionOrder.fetchOrders());
 
       // ✅ Fetch cart dan log response
@@ -38,7 +39,7 @@ const CustomerDashboard = () => {
           console.error("❌ Fetch Cart Error:", error);
         });
     }
-  }, [dispatch, currUsers?.id]);
+  }, [dispatch, currUsers?.user?.id]);
 
   const tabs = [
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
@@ -81,6 +82,46 @@ const CustomerDashboard = () => {
     }
   };
 
+  // ✅ Handle submit RAB request
+  const handleSubmitOrder = async (orderData) => {
+    try {
+      console.log("📤 Submitting RAB request:", orderData);
+
+      // Validate required fields
+      if (!orderData.projectName || !orderData.projectLocation) {
+        alert("Nama proyek dan lokasi harus diisi");
+        return;
+      }
+
+      if (!orderData.items || orderData.items.length === 0) {
+        alert("Minimal harus ada 1 item dalam pesanan");
+        return;
+      }
+
+      // Create RAB request
+      const rabData = {
+        title: orderData.projectName,
+        description: orderData.projectDescription || `Proyek ${orderData.projectName}`,
+        location: orderData.projectLocation,
+        estimatedBudget: orderData.total,
+        expectedStartDate: orderData.startDate,
+        customerNotes: `Items: ${orderData.items.map(i => `${i.productName} (${i.quantity} ${i.unit})`).join(', ')}`,
+      };
+
+      console.log("📋 RAB Data:", rabData);
+
+      await dispatch(actionRab.createRABRequest(rabData)).unwrap();
+
+      alert("✅ Permintaan RAB berhasil diajukan! Silakan tunggu penawaran dari Project Manager.");
+      
+      // Clear cart after successful submission
+      await handleOrderComplete();
+    } catch (error) {
+      console.error("❌ Failed to submit RAB:", error);
+      alert("Gagal mengajukan RAB: " + (error.message || error));
+    }
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "catalog":
@@ -90,13 +131,14 @@ const CustomerDashboard = () => {
         return (
           <OrderForm
             products={listProducts}
-            user={currUsers}
+            user={currUsers?.user}
+            onAddOrder={handleSubmitOrder}
             onOrderComplete={handleOrderComplete}
           />
         );
 
       case "history":
-        return <OrderHistory user={currUsers} orders={listOrders} />;
+        return <OrderHistory user={currUsers?.user} orders={listOrders} />;
 
       default:
         return <ProductCatalog onAddToCart={handleAddFromCatalog} />;

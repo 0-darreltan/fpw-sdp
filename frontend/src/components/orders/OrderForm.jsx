@@ -199,6 +199,7 @@ const OrderForm = ({ products = [], user, onAddOrder, onOrderComplete }) => {
         actionCart.upsertItemInCart({
           productId: productId,
           quantity: qty,
+          replaceQuantity: true, // ✅ Replace, not increment
         })
       ).unwrap();
 
@@ -264,12 +265,20 @@ const OrderForm = ({ products = [], user, onAddOrder, onOrderComplete }) => {
 
   // ✅ Submit order
   const onSubmit = async (data) => {
+    // Get user from currUsers.user or fallback to user prop
+    const currentUser = currUsers?.user || user;
+    
+    if (!currentUser) {
+      alert("User data tidak ditemukan. Silakan login kembali.");
+      return;
+    }
+
     const order = {
       ...data,
-      customerId: user?.id || user?._id,
-      customerName: user?.name,
-      customerEmail: user?.email,
-      customerPhone: user?.phone,
+      customerId: currentUser?.id || currentUser?._id,
+      customerName: currentUser?.name,
+      customerEmail: currentUser?.email,
+      customerPhone: currentUser?.phone,
       total: calculateTotal(),
       status: "pending",
       createdAt: new Date().toISOString(),

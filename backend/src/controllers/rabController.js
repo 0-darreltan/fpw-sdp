@@ -1,26 +1,61 @@
-const { RAB, User, Project } = require("../models");
+const { RAB, User, Project, ActivityLog } = require("../models");
 const {
   createRABSchema,
   updateRABSchema,
 } = require("../validations/rabValidation");
 
-// ✅ GET semua RAB
+// ✅ GET semua RAB (dengan filter berdasarkan role)
 const getRAB = async (req, res) => {
   try {
     const { status, projectId, customerId } = req.query;
     const query = {};
 
+    // Filter berdasarkan role user
+    if (req.user.role === "customer") {
+      // Customer hanya bisa lihat RAB miliknya
+      query.customerId = req.user._id;
+    } else if (req.user.role === "project_manager") {
+      // PM bisa lihat:
+      // 1. RAB yang belum ditangani siapapun (pending/reviewed tanpa projectManagerId)
+      // 2. RAB yang sudah dia tangani sendiri
+      query.$or = [
+        { projectManagerId: { $exists: false } }, // Belum ada PM yang tangani
+        { projectManagerId: null }, // Belum ada PM yang tangani
+        { projectManagerId: req.user._id }, // RAB yang dia tangani
+      ];
+    }
+    // Admin bisa lihat semua
+
     if (status) query.status = status;
     if (projectId) query.projectId = projectId;
-    if (customerId) query.customerId = customerId;
+    if (customerId && req.user.role === "admin") query.customerId = customerId;
+
+    console.log("🔍 RAB Query:", {
+      role: req.user.role,
+      userId: req.user._id,
+      query: JSON.stringify(query, null, 2),
+    });
 
     const rabs = await RAB.find(query)
       .populate("customerId", "name email role")
+      .populate("projectManagerId", "name email role")
       .populate("projectId", "name location")
       .sort({ createdAt: -1 });
 
+    console.log("📋 RAB Results:", {
+      count: rabs.length,
+      data: rabs.map(r => ({
+        id: r._id,
+        title: r.title,
+        status: r.status,
+        customerId: r.customerId?._id,
+        projectManagerId: r.projectManagerId?._id,
+      })),
+    });
+
     res.status(200).json({ success: true, data: rabs });
   } catch (error) {
+    console.error("❌ RAB Query Error:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -148,10 +183,319 @@ const deleteRAB = async (req, res) => {
   }
 };
 
+// ✅ CUSTOMER: Create RAB Request
+const createRABRequest = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      location,
+      estimatedBudget,
+      expectedStartDate,
+      customerNotes,
+    } = req.body;
+
+    // Validasi required fields
+    if (!title || !description || !location) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, description, and location are required",
+      });
+    }
+
+    const rab = new RAB({
+      customerId: req.user._id,
+      customerName: req.user.name,
+      customerEmail: req.user.email,
+      title,
+      description,
+      location,
+      estimatedBudget,
+      expectedStartDate,
+      customerNotes,
+      status: "pending",
+      submittedAt: new Date(),
+    });
+
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_request_created",
+      title: "Permintaan RAB Baru",
+      description: `Customer ${req.user.name} mengajukan permintaan RAB untuk "${title}" di ${location}${estimatedBudget ? ` dengan estimasi budget Rp ${estimatedBudget.toLocaleString('id-ID')}` : ''}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "📋",
+      metadata: {
+        rabId: rab._id,
+        title,
+        location,
+        estimatedBudget,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "RAB request submitted successfully",
+      data: rab,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PM: Assign RAB to self and update status to 'reviewed'
+const assignRABToMe = async (req, res) => {
+  try {
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    if (rab.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "RAB can only be assigned when status is pending",
+      });
+    }
+
+    rab.projectManagerId = req.user._id;
+    rab.projectManagerName = req.user.name;
+    rab.status = "reviewed";
+    rab.reviewedAt = new Date();
+
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_assigned",
+      title: "RAB Ditangani PM",
+      description: `Project Manager ${req.user.name} mulai menangani permintaan RAB "${rab.title}" dari ${rab.customerName}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "👷",
+      metadata: {
+        rabId: rab._id,
+        customerName: rab.customerName,
+        title: rab.title,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB assigned successfully",
+      data: rab,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PM: Create and send RAB quotation
+const sendRABQuotation = async (req, res) => {
+  try {
+    const { items, pmNotes, projectId } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "RAB items are required",
+      });
+    }
+
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    // Hanya PM yang assigned yang bisa kirim quotation
+    if (rab.projectManagerId && rab.projectManagerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only assigned PM can send quotation",
+      });
+    }
+
+    // Hitung total
+    const totalEstimated = items.reduce(
+      (sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0),
+      0
+    );
+
+    rab.items = items;
+    rab.totalEstimated = totalEstimated;
+    rab.pmNotes = pmNotes;
+    rab.status = "quoted";
+    rab.quotedAt = new Date();
+    
+    if (projectId) {
+      rab.projectId = projectId;
+    }
+
+    // Assign PM jika belum
+    if (!rab.projectManagerId) {
+      rab.projectManagerId = req.user._id;
+      rab.projectManagerName = req.user.name;
+    }
+
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_quoted",
+      title: "Penawaran RAB Dikirim",
+      description: `Project Manager ${req.user.name} mengirim penawaran RAB untuk "${rab.title}" kepada ${rab.customerName} dengan total estimasi Rp ${totalEstimated.toLocaleString('id-ID')}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "💰",
+      metadata: {
+        rabId: rab._id,
+        customerName: rab.customerName,
+        title: rab.title,
+        totalEstimated,
+        itemsCount: items.length,
+      },
+    });
+
+    const populatedRAB = await RAB.findById(rab._id)
+      .populate("customerId", "name email role")
+      .populate("projectManagerId", "name email role")
+      .populate("projectId", "name location");
+
+    res.status(200).json({
+      success: true,
+      message: "RAB quotation sent successfully",
+      data: populatedRAB,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ CUSTOMER: Accept RAB quotation
+const acceptRABQuotation = async (req, res) => {
+  try {
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    // Hanya customer yang buat request yang bisa accept
+    if (rab.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the requester can accept this quotation",
+      });
+    }
+
+    if (rab.status !== "quoted") {
+      return res.status(400).json({
+        success: false,
+        message: "Can only accept quotation with 'quoted' status",
+      });
+    }
+
+    rab.status = "accepted";
+    rab.respondedAt = new Date();
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_accepted",
+      title: "Penawaran RAB Diterima",
+      description: `Customer ${req.user.name} menerima penawaran RAB "${rab.title}" dengan total Rp ${rab.totalEstimated.toLocaleString('id-ID')}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "✅",
+      metadata: {
+        rabId: rab._id,
+        title: rab.title,
+        totalEstimated: rab.totalEstimated,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB quotation accepted",
+      data: rab,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ CUSTOMER: Reject RAB quotation
+const rejectRABQuotation = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    // Hanya customer yang buat request yang bisa reject
+    if (rab.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the requester can reject this quotation",
+      });
+    }
+
+    if (rab.status !== "quoted") {
+      return res.status(400).json({
+        success: false,
+        message: "Can only reject quotation with 'quoted' status",
+      });
+    }
+
+    rab.status = "rejected";
+    rab.respondedAt = new Date();
+    if (reason) {
+      rab.customerNotes = (rab.customerNotes || "") + "\n\nRejection reason: " + reason;
+    }
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_rejected",
+      title: "Penawaran RAB Ditolak",
+      description: `Customer ${req.user.name} menolak penawaran RAB "${rab.title}". Alasan: ${reason || "Tidak disebutkan"}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "❌",
+      metadata: {
+        rabId: rab._id,
+        title: rab.title,
+        reason,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB quotation rejected",
+      data: rab,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRAB,
   getRABById,
   createRAB,
   updateRAB,
   deleteRAB,
+  createRABRequest,
+  assignRABToMe,
+  sendRABQuotation,
+  acceptRABQuotation,
+  rejectRABQuotation,
 };

@@ -1,6 +1,39 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../api";
 
+// ✅ Helper function to transform cart items from backend format
+const transformCartItems = (items) => {
+  if (!items || !Array.isArray(items)) return [];
+  
+  return items.map((item) => {
+    // Handle populated productId (object) vs non-populated (string)
+    const product = item.productId;
+    
+    if (typeof product === "object" && product !== null) {
+      // Populated - extract data from product object
+      return {
+        productId: product._id || product.id,
+        productName: product.name || "",
+        price: product.price || 0,
+        unit: product.unit || "",
+        image: product.image || "",
+        quantity: item.quantity || 0,
+      };
+    } else {
+      // Not populated - product is just an ID string
+      // This shouldn't happen normally, but handle gracefully
+      return {
+        productId: product,
+        productName: "Unknown Product",
+        price: 0,
+        unit: "",
+        image: "",
+        quantity: item.quantity || 0,
+      };
+    }
+  });
+};
+
 // THUNKS (Aksi Asinkron)
 
 export const fetchCart = createAsyncThunk(
@@ -24,7 +57,7 @@ export const upsertItemInCart = createAsyncThunk(
   async (itemData, { rejectWithValue }) => {
     // itemData = { productId, quantity }
     try {
-      const response = await api.post("/cart/items", itemData);
+      const response = await api.post("/cart", itemData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -38,7 +71,7 @@ export const deleteCartItem = createAsyncThunk(
   "cart/delete-item",
   async (productId, { rejectWithValue }) => {
     try {
-      const response = await api.delete(`/cart/items/${productId}`);
+      const response = await api.delete(`/cart/${productId}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -52,7 +85,7 @@ export const clearCart = createAsyncThunk(
   "cart/clear-cart",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.delete("/cart");
+      const response = await api.delete("/cart/clear/all");
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -82,34 +115,65 @@ const cartSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Menangani semua state 'pending' secara umum
-      .addMatcher(
-        (action) => action.type.endsWith("/pending"),
-        (state) => {
-          state.loading = true;
-          state.error = null;
-        }
-      )
-      // Menangani semua state 'fulfilled' dari aksi cart
-      // Pola ini sangat efisien karena backend kita selalu mengembalikan state keranjang yang utuh.
-      .addMatcher(
-        (action) =>
-          action.type.startsWith("cart/") && action.type.endsWith("/fulfilled"),
-        (state, action) => {
-          state.loading = false;
-          // API kita selalu mengembalikan { success: true, data: cartObject }
-          // cartObject bisa null jika keranjang belum pernah dibuat
-          state.items = action.payload.data?.items || [];
-        }
-      )
-      // Menangani semua state 'rejected' secara umum
-      .addMatcher(
-        (action) => action.type.endsWith("/rejected"),
-        (state, action) => {
-          state.loading = false;
-          state.error = action.payload?.message || "An unknown error occurred";
-        }
-      );
+      // fetchCart
+      .addCase(fetchCart.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCart.fulfilled, (state, action) => {
+        state.loading = false;
+        const rawItems = action.payload.data?.items || [];
+        state.items = transformCartItems(rawItems);
+      })
+      .addCase(fetchCart.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Failed to fetch cart";
+        state.items = [];
+      })
+      
+      // upsertItemInCart
+      .addCase(upsertItemInCart.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(upsertItemInCart.fulfilled, (state, action) => {
+        state.loading = false;
+        const rawItems = action.payload.data?.items || [];
+        state.items = transformCartItems(rawItems);
+      })
+      .addCase(upsertItemInCart.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Failed to add item to cart";
+      })
+      
+      // deleteCartItem
+      .addCase(deleteCartItem.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteCartItem.fulfilled, (state, action) => {
+        state.loading = false;
+        const rawItems = action.payload.data?.items || [];
+        state.items = transformCartItems(rawItems);
+      })
+      .addCase(deleteCartItem.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Failed to delete item";
+      })
+      
+      // clearCart
+      .addCase(clearCart.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(clearCart.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = [];
+      })
+      .addCase(clearCart.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload?.message || "Failed to clear cart";
+      });
   },
 });
 

@@ -11,6 +11,14 @@ import rabReducer from "../features/RAB/rabSlice";
 import materialRequestReducer from "../features/materialRequest/materialRequestSlice";
 import cartReducer from "../features/cart/cartSlice";
 import activityReducer from "../features/activity/activitySlice";
+import {
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from "redux-persist";
 
 const persistConfig = {
   key: "user",
@@ -39,6 +47,12 @@ export const store = configureStore({
     cart: persistCartReducer,
     activity: activityReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
 });
 
 export const persistor = persistStore(store);
