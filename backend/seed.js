@@ -170,34 +170,7 @@ async function seed() {
       status: "pending",
     });
 
-    // ============================
-    // 7. MATERIAL REQUEST
-    // ============================
-    console.log("Seeding material request...");
 
-    const mr = await MaterialRequest.create({
-      projectId: project._id,
-      projectName: project.name,
-      requesterId: pm._id,
-      requesterName: pm.name,
-      requesterEmail: pm.email,
-      requestReason: "Kebutuhan pengecatan awal",
-      urgencyLevel: "normal",
-      items: [
-        {
-          productId: products[2]._id,
-          productName: products[2].name,
-          quantity: 5,
-          unit: products[2].unit,
-          price: products[2].price,
-          subtotal: 5 * products[2].price,
-          availableStock: products[2].stock,
-          stockStatus: "sufficient",
-          notes: "Untuk dinding ruang tamu",
-        },
-      ],
-      total: 5 * products[2].price,
-    });
 
     // ============================
     // 8. CART
