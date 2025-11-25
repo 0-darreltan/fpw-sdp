@@ -5,9 +5,11 @@ const {
   getRABById,
   createRAB,
   updateRAB,
+  updateRABStatus,
   deleteRAB,
   createRABRequest,
   assignRABToMe,
+  assignRABToPM,
   sendRABQuotation,
   acceptRABQuotation,
   rejectRABQuotation,
@@ -29,6 +31,12 @@ router.post("/:id/reject", authMiddleware, rejectRABQuotation);
 
 // PM: Assign RAB to self
 router.post("/:id/assign", authMiddleware, cekProjectManager, assignRABToMe);
+
+// Admin: Assign RAB to specific PM
+router.put("/:id/assign", authMiddleware, cekAdmin, assignRABToPM);
+
+// Admin: Update RAB status
+router.put("/:id/status", authMiddleware, cekAdmin, updateRABStatus);
 
 // PM: Send RAB quotation
 router.post("/:id/quotation", authMiddleware, cekProjectManager, sendRABQuotation);

@@ -193,6 +193,7 @@ const createRABRequest = async (req, res) => {
       estimatedBudget,
       expectedStartDate,
       customerNotes,
+      items,
     } = req.body;
 
     // Validasi required fields
@@ -213,6 +214,7 @@ const createRABRequest = async (req, res) => {
       estimatedBudget,
       expectedStartDate,
       customerNotes,
+      items: items || [],
       status: "pending",
       submittedAt: new Date(),
     });
@@ -487,14 +489,152 @@ const rejectRABQuotation = async (req, res) => {
   }
 };
 
+// ✅ Admin: Assign RAB to specific PM and update status
+const assignRABToPM = async (req, res) => {
+  try {
+    const { projectManagerId } = req.body;
+    
+    if (!projectManagerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Project Manager ID is required",
+      });
+    }
+
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    // Get PM details
+    const User = require("../models/User");
+    const pm = await User.findById(projectManagerId);
+    if (!pm || pm.role !== "project_manager") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Project Manager",
+      });
+    }
+
+    rab.projectManagerId = projectManagerId;
+    rab.projectManagerName = pm.name;
+    
+    // Update status to reviewed if still pending
+    if (rab.status === "pending") {
+      rab.status = "reviewed";
+      rab.reviewedAt = new Date();
+    }
+
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_assigned",
+      title: "RAB Ditugaskan ke PM",
+      description: `Admin menugaskan permintaan RAB "${rab.title}" ke Project Manager ${pm.name}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "👨‍💼",
+      metadata: {
+        rabId: rab._id,
+        pmId: pm._id,
+        pmName: pm.name,
+        title: rab.title,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB assigned to Project Manager successfully",
+      data: rab,
+    });
+  } catch (error) {
+    console.error("❌ assignRABToPM error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Admin: Update RAB status
+const updateRABStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    const validStatuses = ["pending", "reviewed", "quoted", "accepted", "rejected"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status",
+      });
+    }
+
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    const oldStatus = rab.status;
+    rab.status = status;
+    
+    if (status === "reviewed" && !rab.reviewedAt) {
+      rab.reviewedAt = new Date();
+    }
+
+    await rab.save();
+
+    // Create activity log
+    const statusLabels = {
+      pending: "Menunggu Review",
+      reviewed: "Dalam Review",
+      quoted: "Quotation Dikirim",
+      accepted: "Diterima",
+      rejected: "Ditolak",
+    };
+
+    await ActivityLog.create({
+      type: "rab_status_updated",
+      title: "Status RAB Diubah",
+      description: `Status RAB "${rab.title}" diubah dari "${statusLabels[oldStatus]}" menjadi "${statusLabels[status]}"`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "🔄",
+      metadata: {
+        rabId: rab._id,
+        title: rab.title,
+        oldStatus,
+        newStatus: status,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB status updated successfully",
+      data: rab,
+    });
+  } catch (error) {
+    console.error("❌ updateRABStatus error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getRAB,
   getRABById,
   createRAB,
   updateRAB,
+  updateRABStatus,
   deleteRAB,
   createRABRequest,
   assignRABToMe,
+  assignRABToPM,
   sendRABQuotation,
   acceptRABQuotation,
   rejectRABQuotation,

@@ -24,7 +24,7 @@ const CheckoutPage = () => {
   // -----------------------------
   async function loadRABItems() {
     try {
-      const res = await fetch(`http://localhost:3000/api/rab/${rabId}`);
+      const res = await fetch(`http://localhost:3000/api/rabs/${rabId}`);
       const data = await res.json();
 
       const converted = data.items.map((i) => ({

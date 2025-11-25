@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import OrderForm from "../../components/orders/OrderForm";
-import OrderHistory from "../../components/orders/OrderHistory";
+import RABHistory from "../../components/orders/RABHistory";
 import ProductCatalog from "../../components/products/ProductCatalog";
 import { actionOrder } from "../../features/order/orderSlice";
 import { actionProduct } from "../../features/product/productSlice";
@@ -46,7 +46,7 @@ const CustomerDashboard = () => {
     { id: "catalog", label: "Katalog Produk", icon: "📦" },
     { id: "order", label: "Buat Pesanan", icon: "📝" },
     { id: "materials", label: "Beli Material", icon: "🛒" },
-    { id: "history", label: "Riwayat Pesanan", icon: "📋" },
+    { id: "history", label: "Status Pesanan / RAB", icon: "📋" },
   ];
 
   // ✅ Handle add to cart dengan logging
@@ -107,7 +107,12 @@ const CustomerDashboard = () => {
         location: orderData.projectLocation,
         estimatedBudget: orderData.total,
         expectedStartDate: orderData.startDate,
-        customerNotes: `Items: ${orderData.items.map(i => `${i.productName} (${i.quantity} ${i.unit})`).join(', ')}`,
+        customerNotes: orderData.notes || "",
+        items: orderData.items.map(item => ({
+          materialName: item.productName || item.name,
+          quantity: item.quantity,
+          unit: item.unit || "pcs"
+        }))
       };
 
       console.log("📋 RAB Data:", rabData);
@@ -140,9 +145,9 @@ const CustomerDashboard = () => {
         );
 
       case "history":
-        return <OrderHistory user={currUsers?.user} orders={listOrders} />;
+        return <RABHistory user={currUsers?.user} />;
 
-      case "material":
+      case "materials":
         return <MaterialPurchaseForm user={currUsers} />;
 
       default:

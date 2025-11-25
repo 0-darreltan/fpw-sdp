@@ -5,9 +5,14 @@ const bcrypt = require("bcryptjs");
 // ✅ GET semua user (Admin only)
 const getUser = async (req, res) => {
   try {
-    const users = await User.find().select("-password");
+    const { role } = req.query;
+    console.log("📋 getUser called - role filter:", role);
+    const query = role ? { role } : {};
+    const users = await User.find(query).select("-password");
+    console.log("✅ Found users:", users.length);
     res.status(200).json(users);
   } catch (error) {
+    console.error("❌ getUser error:", error);
     res.status(500).json({ message: "Internal Server Error: " + error });
   }
 };

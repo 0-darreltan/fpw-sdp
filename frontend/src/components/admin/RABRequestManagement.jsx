@@ -23,6 +23,7 @@ const RABRequestManagement = () => {
   });
   const [projectManagers, setProjectManagers] = useState([]);
   const [selectedPMId, setSelectedPMId] = useState("");
+  const [filterByPM, setFilterByPM] = useState(""); // Filter untuk menampilkan RAB berdasarkan PM
 
   useEffect(() => {
     dispatch(fetchRabs());
@@ -31,29 +32,45 @@ const RABRequestManagement = () => {
 
   const fetchProjectManagers = async () => {
     try {
-      const response = await fetch({
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      console.log("🔍 Fetching project managers...");
+      const token = sessionStorage.getItem("token");
+      console.log("Token:", token ? "exists" : "missing");
+      
+      const response = await fetch(
+        "http://localhost:3000/api/users?role=project_manager",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      console.log("Response status:", response.status);
       const data = await response.json();
-      if (data.success) {
-        setProjectManagers(data.data || []);
+      console.log("Response data:", data);
+      
+      if (Array.isArray(data)) {
+        setProjectManagers(data);
+        console.log("✅ Project managers loaded:", data.length);
+      } else {
+        console.warn("⚠️ Response is not an array:", data);
+        setProjectManagers([]);
       }
     } catch (error) {
-      console.error("Failed to fetch project managers:", error);
+      console.error("❌ Failed to fetch project managers:", error);
+      setProjectManagers([]);
     }
   };
 
   const handleAssignPM = async (rabId, pmId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/rab/${rabId}/assign`,
+        `http://localhost:3000/api/rabs/${rabId}/assign`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
           },
           body: JSON.stringify({ projectManagerId: pmId }),
         }
@@ -86,12 +103,12 @@ const RABRequestManagement = () => {
     ) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/rab/${rabId}/status`,
+          `http://localhost:3000/api/rabs/${rabId}/status`,
           {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${sessionStorage.getItem("token")}`,
             },
             body: JSON.stringify({ status: newStatus }),
           }
@@ -111,10 +128,18 @@ const RABRequestManagement = () => {
     }
   };
 
-  const filteredRABs =
-    filter === "all"
-      ? listRabs
-      : listRabs.filter((rab) => rab.status === filter);
+  // Filter RAB berdasarkan status dan PM
+  const filteredRABs = listRabs.filter((rab) => {
+    // Filter by status
+    const matchStatus = filter === "all" || rab.status === filter;
+    
+    // Filter by PM
+    const matchPM = !filterByPM || 
+      (rab.projectManagerId && 
+       (rab.projectManagerId._id === filterByPM || rab.projectManagerId === filterByPM));
+    
+    return matchStatus && matchPM;
+  });
 
   const getStatusBadge = (status) => {
     const config = {
@@ -311,6 +336,35 @@ const RABRequestManagement = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Filter by Project Manager */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Filter berdasarkan Project Manager:
+        </label>
+        <select
+          value={filterByPM}
+          onChange={(e) => setFilterByPM(e.target.value)}
+          className="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="">Semua Project Manager</option>
+          {projectManagers.map((pm) => {
+            const pmRabCount = listRabs.filter(
+              (rab) => rab.projectManagerId?._id === pm._id || rab.projectManagerId === pm._id
+            ).length;
+            return (
+              <option key={pm._id} value={pm._id}>
+                {pm.name} - {pm.email} ({pmRabCount} RAB)
+              </option>
+            );
+          })}
+        </select>
+        {filterByPM && (
+          <p className="mt-2 text-sm text-gray-600">
+            Menampilkan {filteredRABs.length} RAB untuk PM yang dipilih
+          </p>
+        )}
       </div>
 
       {/* RAB List */}
@@ -601,47 +655,6 @@ const RABRequestManagement = () => {
                   </table>
                 </div>
               </div>
-
-              {/* Update Status Buttons - Only for Admin */}
-              {user?.role === "admin" && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Update Status Permintaan
-                  </h4>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() =>
-                          handleUpdateStatus(selectedRAB._id, "reviewed")
-                        }
-                        className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        Review
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleUpdateStatus(selectedRAB._id, "accepted")
-                        }
-                        className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
-                      >
-                        Diterima
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleUpdateStatus(selectedRAB._id, "rejected")
-                        }
-                        className="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
-                      >
-                        Ditolak
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Klik salah satu tombol untuk mengubah status permintaan
-                      RAB ini
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Quotation if exists */}
               {selectedRAB.totalEstimatedCost > 0 && (

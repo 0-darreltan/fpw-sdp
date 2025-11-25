@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const ProjectMonitoring = ({
   projects,
@@ -11,6 +11,7 @@ const ProjectMonitoring = ({
   const [editingProject, setEditingProject] = useState(null);
   const [detailProject, setDetailProject] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [projectManagers, setProjectManagers] = useState([]);
   const [formData, setFormData] = useState({
     name: "",
     client: "",
@@ -23,15 +24,37 @@ const ProjectMonitoring = ({
     description: "",
   });
 
+  useEffect(() => {
+    fetchProjectManagers();
+  }, []);
+
+  const fetchProjectManagers = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/users?role=project_manager",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setProjectManagers(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch project managers:", error);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     // Normalize data shape: parent expects projectManagerId and handles id/status
     const projectData = {
       ...formData,
       budget: parseFloat(formData.budget),
-      projectManagerId: formData.projectManager
-        ? Number(formData.projectManager)
-        : null,
+      projectManagerId: formData.projectManager || null,
     };
 
     if (editingProject) {
@@ -455,8 +478,8 @@ const ProjectMonitoring = ({
                     >
                       <option value="">Pilih Project Manager</option>
                       {projectManagers.map((pm) => (
-                        <option key={pm.id} value={pm.id}>
-                          {pm.name}
+                        <option key={pm._id} value={pm._id}>
+                          {pm.name} - {pm.email}
                         </option>
                       ))}
                     </select>
