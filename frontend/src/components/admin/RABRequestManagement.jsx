@@ -24,11 +24,30 @@ const RABRequestManagement = () => {
   const [projectManagers, setProjectManagers] = useState([]);
   const [selectedPMId, setSelectedPMId] = useState("");
   const [filterByPM, setFilterByPM] = useState(""); // Filter untuk menampilkan RAB berdasarkan PM
+  const [products, setProducts] = useState([]); // Add products state
 
   useEffect(() => {
     dispatch(fetchRabs());
     fetchProjectManagers();
+    fetchProducts(); // Fetch products for stock info
   }, [dispatch]);
+
+  const fetchProducts = async () => {
+    try {
+      const token = sessionStorage.getItem("token");
+      const response = await fetch("http://localhost:3000/api/products", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        setProducts(result.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    }
+  };
 
   const fetchProjectManagers = async () => {
     try {
@@ -89,6 +108,46 @@ const RABRequestManagement = () => {
     }
   };
 
+  const handleRejectByPM = async (rabId) => {
+    const reason = prompt("Masukkan alasan penolakan RAB:");
+    
+    if (!reason) {
+      alert("Alasan penolakan harus diisi!");
+      return;
+    }
+
+    if (
+      window.confirm(
+        `Apakah Anda yakin ingin menolak permintaan RAB ini?\n\nAlasan: ${reason}`
+      )
+    ) {
+      try {
+        const response = await fetch(
+          `http://localhost:3000/api/rabs/${rabId}/reject-by-pm`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ reason }),
+          }
+        );
+
+        const data = await response.json();
+        if (data.success) {
+          alert("✅ RAB berhasil ditolak!");
+          dispatch(fetchRabs());
+          setShowDetailModal(false);
+        } else {
+          alert("Gagal menolak RAB: " + data.message);
+        }
+      } catch (error) {
+        alert("Gagal menolak RAB: " + error.message);
+      }
+    }
+  };
+
   const handleUpdateStatus = async (rabId, newStatus) => {
     const statusLabels = {
       reviewed: "Review",
@@ -130,8 +189,15 @@ const RABRequestManagement = () => {
 
   // Filter RAB berdasarkan status dan PM
   const filteredRABs = listRabs.filter((rab) => {
-    // Filter by status
-    const matchStatus = filter === "all" || rab.status === filter;
+    // Filter by status - gabungkan pending, reviewed, quoted jadi satu "reviewed"
+    let matchStatus;
+    if (filter === "all") {
+      matchStatus = true;
+    } else if (filter === "reviewed") {
+      matchStatus = ["pending", "reviewed", "quoted"].includes(rab.status);
+    } else {
+      matchStatus = rab.status === filter;
+    }
     
     // Filter by PM
     const matchPM = !filterByPM || 
@@ -143,22 +209,17 @@ const RABRequestManagement = () => {
 
   const getStatusBadge = (status) => {
     const config = {
-      pending: {
-        label: "Menunggu Review",
-        class: "bg-yellow-100 text-yellow-800",
-      },
-      reviewed: { label: "Dalam Review", class: "bg-blue-100 text-blue-800" },
-      quoted: {
-        label: "Quotation Dikirim",
-        class: "bg-purple-100 text-purple-800",
-      },
+      pending: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
+      reviewed: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
+      quoted: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
       accepted: {
         label: "Diterima Customer",
         class: "bg-green-100 text-green-800",
       },
       rejected: { label: "Ditolak Customer", class: "bg-red-100 text-red-800" },
+      rejected_by_pm: { label: "Ditolak PM", class: "bg-orange-100 text-orange-800" },
     };
-    const { label, class: className } = config[status] || config.pending;
+    const { label, class: className } = config[status] || { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" };
     return (
       <span
         className={`px-3 py-1 rounded-full text-xs font-medium ${className}`}
@@ -169,6 +230,8 @@ const RABRequestManagement = () => {
   };
 
   const handleViewDetail = (rab) => {
+    console.log("📋 RAB Detail:", rab);
+    console.log("📦 Items:", rab.items);
     setSelectedRAB(rab);
     setSelectedPMId(rab.projectManagerId?._id || "");
     setShowDetailModal(true);
@@ -314,11 +377,10 @@ const RABRequestManagement = () => {
         <div className="flex flex-wrap gap-2">
           {[
             { value: "all", label: "Semua" },
-            { value: "pending", label: "Menunggu Review" },
-            { value: "reviewed", label: "Dalam Review" },
-            { value: "quoted", label: "Quotation Dikirim" },
+            { value: "reviewed", label: "Dalam Review PM" },
             { value: "accepted", label: "Diterima" },
-            { value: "rejected", label: "Ditolak" },
+            { value: "rejected", label: "Ditolak Customer" },
+            { value: "rejected_by_pm", label: "Ditolak PM" },
           ].map((tab) => (
             <button
               key={tab.value}
@@ -332,6 +394,8 @@ const RABRequestManagement = () => {
               {tab.label}
               {tab.value === "all"
                 ? ` (${listRabs.length})`
+                : tab.value === "reviewed"
+                ? ` (${listRabs.filter((r) => r.status === "pending" || r.status === "reviewed" || r.status === "quoted").length})`
                 : ` (${listRabs.filter((r) => r.status === tab.value).length})`}
             </button>
           ))}
@@ -401,9 +465,6 @@ const RABRequestManagement = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tanggal
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     PM Assigned
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -433,11 +494,6 @@ const RABRequestManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">{getStatusBadge(rab.status)}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {formatDate(rab.createdAt)}
-                      </div>
-                    </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">
                         {rab.projectManagerId?.name || (
@@ -625,34 +681,73 @@ const RABRequestManagement = () => {
                   Material yang Diminta
                 </h4>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-gray-300">
-                        <th className="text-left py-2 text-sm font-medium text-gray-700">
-                          Material
-                        </th>
-                        <th className="text-right py-2 text-sm font-medium text-gray-700">
-                          Jumlah
-                        </th>
-                        <th className="text-right py-2 text-sm font-medium text-gray-700">
-                          Satuan
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedRAB.items?.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-200">
-                          <td className="py-2 text-sm">{item.materialName}</td>
-                          <td className="py-2 text-sm text-right">
-                            {item.quantity}
-                          </td>
-                          <td className="py-2 text-sm text-right">
-                            {item.unit}
-                          </td>
+                  {selectedRAB.items && selectedRAB.items.length > 0 ? (
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-b border-gray-300">
+                          <th className="text-left py-2 px-2 text-sm font-medium text-gray-700">
+                            Material
+                          </th>
+                          <th className="text-center py-2 px-2 text-sm font-medium text-gray-700">
+                            Jumlah
+                          </th>
+                          <th className="text-center py-2 px-2 text-sm font-medium text-gray-700">
+                            Satuan
+                          </th>
+                          <th className="text-center py-2 px-2 text-sm font-medium text-gray-700">
+                            Stok Tersedia
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {selectedRAB.items.map((item, index) => {
+                          // Find matching product to get stock
+                          const product = products.find(
+                            (p) => p.name === (item.materialName || item.name)
+                          );
+                          const stock = product?.stock || 0;
+                          const hasEnoughStock = stock >= (item.quantity || 0);
+
+                          return (
+                            <tr key={index} className="border-b border-gray-200">
+                              <td className="py-2 px-2 text-sm">
+                                {item.materialName || item.name || "-"}
+                              </td>
+                              <td className="py-2 px-2 text-sm text-center">
+                                {item.quantity || 0}
+                              </td>
+                              <td className="py-2 px-2 text-sm text-center">
+                                {item.unit || "pcs"}
+                              </td>
+                              <td className="py-2 px-2 text-sm text-center">
+                                <span
+                                  className={`font-medium ${
+                                    hasEnoughStock
+                                      ? "text-green-600"
+                                      : stock > 0
+                                      ? "text-orange-600"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  {stock} {item.unit || "pcs"}
+                                  {!hasEnoughStock && (
+                                    <span className="text-xs ml-1">⚠️</span>
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <p>Tidak ada material yang tercatat</p>
+                      {selectedRAB.customerNotes && (
+                        <p className="text-xs mt-2">Catatan: {selectedRAB.customerNotes}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -698,6 +793,17 @@ const RABRequestManagement = () => {
                           Assign to Me
                         </button>
                       )}
+                      
+                      {/* Tombol Tolak RAB untuk PM */}
+                      {["pending", "reviewed"].includes(selectedRAB.status) && (
+                        <button
+                          onClick={() => handleRejectByPM(selectedRAB._id)}
+                          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                        >
+                          Tolak RAB
+                        </button>
+                      )}
+                      
                       {selectedRAB.projectManagerId?._id === user?._id &&
                         selectedRAB.status === "reviewed" && (
                           <button
@@ -715,6 +821,16 @@ const RABRequestManagement = () => {
 
                   {user?.role === "admin" && (
                     <>
+                      {/* Tombol Tolak RAB untuk Admin */}
+                      {["pending", "reviewed"].includes(selectedRAB.status) && (
+                        <button
+                          onClick={() => handleRejectByPM(selectedRAB._id)}
+                          className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                        >
+                          Tolak RAB
+                        </button>
+                      )}
+                      
                       {selectedRAB.status === "pending" && (
                         <button
                           onClick={() =>

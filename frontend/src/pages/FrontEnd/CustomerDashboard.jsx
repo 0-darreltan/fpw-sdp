@@ -7,7 +7,6 @@ import { actionOrder } from "../../features/order/orderSlice";
 import { actionProduct } from "../../features/product/productSlice";
 import { actionCart } from "../../features/cart/cartSlice";
 import { actionRab } from "../../features/RAB/rabSlice";
-import MaterialPurchaseForm from "../../components/materials/MaterialPurchaseForm";
 
 const CustomerDashboard = () => {
   const dispatch = useDispatch();
@@ -20,7 +19,7 @@ const CustomerDashboard = () => {
 
   // ✅ Debug cart items
   useEffect(() => {
-    console.log("🛒 Cart Items from Redux:", cartItems);
+    console.log("Cart Items from Redux:", cartItems);
   }, [cartItems]);
 
   // ✅ Fetch data saat component mount
@@ -43,10 +42,9 @@ const CustomerDashboard = () => {
   }, [dispatch, currUsers?.user?.id]);
 
   const tabs = [
-    { id: "catalog", label: "Katalog Produk", icon: "📦" },
-    { id: "order", label: "Buat Pesanan", icon: "📝" },
-    { id: "materials", label: "Beli Material", icon: "🛒" },
-    { id: "history", label: "Status Pesanan / RAB", icon: "📋" },
+    { id: "catalog", label: "Katalog Produk", icon: "" },
+    { id: "order", label: "Buat Pesanan", icon: "" },
+    { id: "history", label: "Status Pesanan / RAB", icon: "" },
   ];
 
   // ✅ Handle add to cart dengan logging
@@ -63,10 +61,10 @@ const CustomerDashboard = () => {
         })
       ).unwrap();
 
-      console.log("✅ Upsert Response:", upsertResponse);
+      console.log("Upsert Response:", upsertResponse);
 
       const fetchResponse = await dispatch(actionCart.fetchCart()).unwrap();
-      console.log("✅ Cart after add:", fetchResponse);
+      console.log("Cart after add:", fetchResponse);
 
       setActiveTab("order");
     } catch (error) {
@@ -119,12 +117,12 @@ const CustomerDashboard = () => {
 
       await dispatch(actionRab.createRABRequest(rabData)).unwrap();
 
-      alert("✅ Permintaan RAB berhasil diajukan! Silakan tunggu penawaran dari Project Manager.");
+      alert("Permintaan RAB berhasil diajukan! Silakan tunggu penawaran dari Project Manager.");
       
       // Clear cart after successful submission
       await handleOrderComplete();
     } catch (error) {
-      console.error("❌ Failed to submit RAB:", error);
+      console.error("Failed to submit RAB:", error);
       alert("Gagal mengajukan RAB: " + (error.message || error));
     }
   };
@@ -146,9 +144,6 @@ const CustomerDashboard = () => {
 
       case "history":
         return <RABHistory user={currUsers?.user} />;
-
-      case "materials":
-        return <MaterialPurchaseForm user={currUsers} />;
 
       default:
         return <ProductCatalog onAddToCart={handleAddFromCatalog} />;

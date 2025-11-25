@@ -2,10 +2,18 @@ const Joi = require("joi");
 
 // Schema untuk tiap item dalam RAB
 const rabItemSchema = Joi.object({
-  description: Joi.string().required(),
-  unit: Joi.string().required(),
-  qty: Joi.number().min(1).required(),
-  unitPrice: Joi.number().min(0).required(),
+  // Product reference (optional)
+  productId: Joi.string().allow("", null).optional(),
+  
+  // Support both old and new field names - allow empty strings
+  materialName: Joi.string().allow("", null).optional(),
+  description: Joi.string().allow("", null).optional(),
+  quantity: Joi.number().min(0).optional(),
+  
+  // Legacy fields
+  unit: Joi.string().allow("", null).optional(),
+  qty: Joi.number().min(0).optional(),
+  unitPrice: Joi.number().min(0).optional(),
 });
 
 // Validasi untuk membuat RAB baru

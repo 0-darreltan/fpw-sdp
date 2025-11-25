@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import MaterialRequest from "../../components/materials/MaterialRequest";
 import ProjectList from "../../components/projects/ProjectList";
+import RABReviewPanel from "../../components/projects/RABReviewPanel";
 import { actionProject } from "../../features/project/projectSlice";
 import { actionProduct } from "../../features/product/productSlice";
 import { actionOrder } from "../../features/order/orderSlice";
@@ -22,6 +23,8 @@ const ProjectManagerDashboard = ({
   const [activeTab, setActiveTab] = useState("projects");
   const [rabsFetched, setRabsFetched] = useState(false);
   const [initialFetchDone, setInitialFetchDone] = useState(false);
+  const [selectedRAB, setSelectedRAB] = useState(null);
+  const [showRABReview, setShowRABReview] = useState(false);
 
   // Project add/edit state
   const [editingProject, setEditingProject] = useState(null);
@@ -76,6 +79,7 @@ const ProjectManagerDashboard = ({
     startDate: p.startDate,
     endDate: p.endDate,
     budget: p.budget,
+    progress: p.progress || 0, // Add progress field
   }));
 
   const normProducts = rawProducts.map((pr) => ({
@@ -92,6 +96,7 @@ const ProjectManagerDashboard = ({
         projectName: r.title || r.projectName || "",
         description: r.description || "",
         customerId: r.customerId && (r.customerId._id || r.customerId),
+        projectManagerId: r.projectManagerId && (r.projectManagerId._id || r.projectManagerId),
         location: r.location || "",
         items: r.items || [],
         totalEstimate: r.totalEstimated || r.totalEstimate || 0,
@@ -109,6 +114,14 @@ const ProjectManagerDashboard = ({
   useEffect(() => {
     const fetchAllData = async () => {
       try {
+        // Check if token exists before fetching
+        const token = sessionStorage.getItem("token");
+        if (!token) {
+          console.error("No authentication token found");
+          setInitialFetchDone(true);
+          return;
+        }
+
         // Only fetch essential data initially (projects and products)
         // Other data will be fetched when needed
         await Promise.all([
@@ -197,6 +210,152 @@ const ProjectManagerDashboard = ({
       return res;
     } catch (err) {
       console.error("Failed to create material request", err);
+    }
+  };
+
+  // Handler untuk approve RAB
+  const handleApproveRAB = async (rabId, { items, totalEstimated, pmNotes }) => {
+    try {
+      console.log("Approving RAB:", { rabId, items, totalEstimated, pmNotes });
+      
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:3000/api/rabs/${rabId}/quotation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            items: items.map(item => ({
+              materialName: item.materialName || item.description,
+              description: item.description || "",
+              quantity: parseFloat(item.quantity) || 0,
+              unit: item.unit || "pcs",
+              unitPrice: parseFloat(item.unitPrice) || 0,
+              qty: parseFloat(item.quantity) || 0,
+            })),
+            pmNotes,
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Show success message with project info
+        if (data.project) {
+          showToast(
+            `✅ RAB berhasil disetujui! Proyek "${data.project.name}" telah dibuat dan masuk ke Proyek Saya.`, 
+            "success"
+          );
+        } else {
+          showToast("✅ RAB berhasil disetujui dan quotation dikirim!", "success");
+        }
+        
+        setShowRABReview(false);
+        setSelectedRAB(null);
+        
+        // Refresh RAB list and projects list
+        dispatch(actionRab.fetchRabs());
+        dispatch(actionProject.fetchProjects());
+      } else {
+        throw new Error(data.message || "Gagal approve RAB");
+      }
+    } catch (error) {
+      console.error("Failed to approve RAB:", error);
+      showToast("❌ Gagal approve RAB: " + error.message, "error");
+    }
+  };
+
+  // Handler untuk reject RAB
+  const handleRejectRAB = async (rabId, reason) => {
+    try {
+      console.log("Rejecting RAB:", { rabId, reason });
+      
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:3000/api/rabs/${rabId}/reject-by-pm`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast("RAB berhasil ditolak", "success");
+        setShowRABReview(false);
+        setSelectedRAB(null);
+        
+        // Refresh RAB list
+        dispatch(actionRab.fetchRabs());
+      } else {
+        throw new Error(data.message || "Gagal reject RAB");
+      }
+    } catch (error) {
+      console.error("Failed to reject RAB:", error);
+      showToast("❌ Gagal reject RAB: " + error.message, "error");
+    }
+  };
+
+  // Handler untuk update items RAB
+  const handleUpdateRABItems = async (rabId, items) => {
+    try {
+      console.log("📝 Updating RAB items:", { rabId, items });
+      
+      const token = sessionStorage.getItem("token");
+      const response = await fetch(
+        `http://localhost:3000/api/rabs/${rabId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            items: items.map(item => {
+              const materialName = item.materialName || item.description || "Material";
+              return {
+                productId: item.productId || "",
+                materialName: materialName,
+                description: item.description || materialName, // Use materialName as fallback
+                quantity: parseFloat(item.quantity) || 0,
+                unit: item.unit || "pcs",
+                unitPrice: parseFloat(item.unitPrice) || 0,
+              };
+            }),
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showToast("✅ Material berhasil diperbarui dan disimpan", "success");
+        
+        // Update selectedRAB with new items from server response
+        if (selectedRAB) {
+          setSelectedRAB({ 
+            ...selectedRAB, 
+            items: data.data?.items || items 
+          });
+        }
+        
+        // Refresh RAB list from server
+        dispatch(actionRab.fetchRabs());
+      } else {
+        throw new Error(data.message || "Failed to update items");
+      }
+    } catch (error) {
+      console.error("❌ Failed to update RAB items:", error);
+      showToast("Gagal update material: " + error.message, "error");
     }
   };
 
@@ -353,14 +512,9 @@ const ProjectManagerDashboard = ({
                 </div>
               </div>
             )}
-            <div className="mb-4 flex justify-between items-center">
+            <div className="mb-4">
               <h3 className="text-lg font-medium">Proyek Saya</h3>
-              <button
-                className="px-3 py-2 bg-blue-600 text-white rounded"
-                onClick={() => setEditingProject({})}
-              >
-                Tambah Proyek
-              </button>
+              <p className="text-sm text-gray-600 mt-1">Proyek otomatis dibuat saat approve RAB</p>
             </div>
 
             {/* Loading State */}
@@ -430,158 +584,158 @@ const ProjectManagerDashboard = ({
             onAddMaterialRequest={finalAddMaterialRequest}
           />
         );
-      case "rabs":
+      case "rabs": {
+        // Filter RAB yang perlu direview oleh PM ini
+        const currentUserId = user?._id || user?.id;
+        const pmRABs = normRabs.filter((r) => {
+          const rabPMId = r.projectManagerId?._id || r.projectManagerId;
+          const isMyRAB = !rabPMId || rabPMId === currentUserId;
+          const isValidStatus = ["pending", "reviewed", "quoted"].includes(r.status);
+          
+          console.log("🔍 RAB Filter Debug:", {
+            rabId: r.id,
+            title: r.title || r.projectName,
+            status: r.status,
+            rabPMId,
+            currentUserId,
+            isMyRAB,
+            isValidStatus,
+            willShow: isValidStatus && isMyRAB
+          });
+          
+          return isValidStatus && isMyRAB;
+        });
+
+        if (showRABReview && selectedRAB) {
+          return (
+            <div>
+              <button
+                onClick={() => {
+                  setShowRABReview(false);
+                  setSelectedRAB(null);
+                }}
+                className="mb-4 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                ← Kembali ke Daftar RAB
+              </button>
+              <RABReviewPanel
+                rab={selectedRAB}
+                onApprove={(data) => handleApproveRAB(selectedRAB._id || selectedRAB.id, data)}
+                onReject={(reason) => handleRejectRAB(selectedRAB._id || selectedRAB.id, reason)}
+                onUpdateItems={(items) => handleUpdateRABItems(selectedRAB._id || selectedRAB.id, items)}
+              />
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
-            <h3 className="text-lg font-medium">Semua Pengajuan RAB</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Permintaan RAB untuk Review</h3>
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                {pmRABs.length} Permintaan
+              </span>
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium text-yellow-900 mb-2">📋 Tugas PM:</h4>
+              <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
+                <li>Mereview permintaan pekerjaan pelanggan</li>
+                <li>Merekomendasikan material yang benar</li>
+                <li>Menambah/menghapus/mengubah material berdasarkan kebutuhan proyek</li>
+                <li>Menyusun atau memperbaiki RAB</li>
+                <li>Memberikan estimasi pekerjaan</li>
+                <li>Menyetujui atau Menolak permintaan proyek</li>
+              </ul>
+            </div>
+
             <div className="grid gap-4">
-              {rabs.length === 0 ? (
-                <div className="text-gray-500">Belum ada pengajuan RAB.</div>
+              {pmRABs.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                  <div className="text-6xl mb-4">📭</div>
+                  <p className="text-gray-500 text-lg">Tidak ada permintaan RAB yang perlu direview</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Permintaan RAB baru dari customer akan muncul di sini
+                  </p>
+                </div>
               ) : (
-                rabs.map((r) => (
-                  <div key={r.id} className="border rounded p-4 bg-white">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-medium">{r.projectName}</div>
-                        <div className="text-sm text-gray-600">
-                          {r.description}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Diajukan oleh {r.customerName || r.customerId?.name || `user #${r.customerId?._id || r.customerId}`} •{" "}
-                          {r.createdAt
-                            ? new Date(r.createdAt).toLocaleString()
-                            : "-"}
-                        </div>
-                        <div className="text-sm text-gray-600 mt-2">
-                          Lokasi: {r.location || "-"} • Luas: {r.area || "-"} •
-                          Kategori: {r.category || "-"}
-                        </div>
+                pmRABs.map((r) => (
+                  <div
+                    key={r.id}
+                    className="border rounded-lg p-6 bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg text-gray-900">{r.title || r.projectName}</h4>
+                        <p className="text-gray-600 mt-1">{r.description}</p>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <div className="text-sm">
-                          Status:{" "}
-                          <span className="font-medium">{r.status}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          {onUpdateRAB && (
-                            <>
-                              <button
-                                className="px-3 py-2 bg-green-600 text-white rounded"
-                                onClick={() =>
-                                  onUpdateRAB({
-                                    ...r,
-                                    status: "Dalam Perhitungan",
-                                  })
-                                }
-                              >
-                                Teruskan ke Estimator
-                              </button>
-                              <button
-                                className="px-3 py-2 bg-yellow-500 text-white rounded"
-                                onClick={() =>
-                                  onUpdateRAB({ ...r, status: "Perlu Revisi" })
-                                }
-                              >
-                                Tandai Perlu Revisi
-                              </button>
-                            </>
-                          )}
-                        </div>
+                      <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-4">
+                        {r.status === "pending"
+                          ? "Menunggu Review"
+                          : r.status === "reviewed"
+                          ? "Dalam Review"
+                          : "Quotation Dikirim"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Customer:</span>
+                        <p className="font-medium">{r.customerName || "-"}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Lokasi:</span>
+                        <p className="font-medium">{r.location || "-"}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Estimasi Budget:</span>
+                        <p className="font-medium">
+                          {r.estimatedBudget
+                            ? `Rp ${Number(r.estimatedBudget).toLocaleString("id-ID")}`
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Tanggal Mulai:</span>
+                        <p className="font-medium">
+                          {r.expectedStartDate
+                            ? new Date(r.expectedStartDate).toLocaleDateString("id-ID")
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Tanggal Pengajuan:</span>
+                        <p className="font-medium">
+                          {r.submittedAt
+                            ? new Date(r.submittedAt).toLocaleDateString("id-ID")
+                            : r.createdAt
+                            ? new Date(r.createdAt).toLocaleDateString("id-ID")
+                            : "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Material Diminta:</span>
+                        <p className="font-medium">{r.items?.length || 0} item</p>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <div className="text-sm font-medium">
-                        Total estimasi: Rp{" "}
-                        {Number(r.totalEstimate || 0).toLocaleString()}
+
+                    {r.customerNotes && (
+                      <div className="bg-gray-50 border border-gray-200 rounded p-3 mb-4 text-sm">
+                        <span className="font-medium text-gray-700">Catatan Customer:</span>
+                        <p className="text-gray-600 mt-1">{r.customerNotes}</p>
                       </div>
-                      {r.proposedPrice && (
-                        <div className="mt-2 text-sm text-blue-700">
-                          Tawaran pelanggan: Rp{" "}
-                          {Number(r.proposedPrice).toLocaleString()}
-                        </div>
-                      )}
-                      {r.agreedPrice && (
-                        <div className="mt-2 text-sm text-green-700">
-                          Harga disepakati: Rp{" "}
-                          {Number(r.agreedPrice).toLocaleString()}
-                        </div>
-                      )}
-                      {r.proposedPrice && onUpdateRAB && (
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            className="px-3 py-2 bg-green-600 text-white rounded"
-                            onClick={() =>
-                              onUpdateRAB({
-                                ...r,
-                                status: "Disetujui",
-                                agreedPrice: r.proposedPrice,
-                              })
-                            }
-                          >
-                            Setujui & Buat Kontrak
-                          </button>
-                          <button
-                            className="px-3 py-2 bg-red-500 text-white rounded"
-                            onClick={() =>
-                              onUpdateRAB({ ...r, status: "Perlu Revisi" })
-                            }
-                          >
-                            Tolak / Minta Revisi
-                          </button>
-                        </div>
-                      )}
-                      {/* itemized table */}
-                      {r.items && r.items.length > 0 && (
-                        <div className="mt-2 overflow-x-auto">
-                          <table className="w-full text-sm border-collapse">
-                            <thead>
-                              <tr className="text-left border-b">
-                                <th className="py-2">Item</th>
-                                <th className="py-2">Jenis</th>
-                                <th className="py-2">Jumlah</th>
-                                <th className="py-2">Satuan</th>
-                                <th className="py-2">Harga Satuan</th>
-                                <th className="py-2">Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {r.items.map((it, idx) => (
-                                <tr key={idx} className="border-b">
-                                  <td className="py-2">{it.name}</td>
-                                  <td className="py-2">
-                                    {it.type || "Produk"}
-                                  </td>
-                                  <td className="py-2">{it.qty} </td>
-                                  <td className="py-2">{it.unit || "-"}</td>
-                                  <td className="py-2">
-                                    Rp {Number(it.price || 0).toLocaleString()}
-                                  </td>
-                                  <td className="py-2">
-                                    Rp{" "}
-                                    {Number(
-                                      (it.qty || 0) * (it.price || 0)
-                                    ).toLocaleString()}
-                                  </td>
-                                </tr>
-                              ))}
-                              <tr>
-                                <td
-                                  colSpan={5}
-                                  className="py-2 font-medium text-right"
-                                >
-                                  Total Biaya RAB
-                                </td>
-                                <td className="py-2 font-medium">
-                                  Rp{" "}
-                                  {Number(
-                                    r.totalEstimate || 0
-                                  ).toLocaleString()}
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                    )}
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setSelectedRAB(r);
+                          setShowRABReview(true);
+                        }}
+                        className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        🔍 Review & Buat Penawaran
+                      </button>
                     </div>
                   </div>
                 ))
@@ -589,6 +743,7 @@ const ProjectManagerDashboard = ({
             </div>
           </div>
         );
+      }
 
       default:
         return <ProjectList projects={projects} user={user} />;

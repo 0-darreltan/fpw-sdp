@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const RABItemSchema = new mongoose.Schema({
+  // Product reference (optional, untuk link ke product master)
+  productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+  
+  // Fields untuk material request dari customer
+  materialName: String,
+  quantity: Number,
+  
+  // Fields untuk RAB quotation dari PM
   description: String,
   unit: String,
   qty: Number,
@@ -41,6 +49,7 @@ const RABSchema = new mongoose.Schema(
         'quoted',            // PM sudah kirim penawaran RAB
         'accepted',          // Customer terima penawaran
         'rejected',          // Customer tolak penawaran
+        'rejected_by_pm',    // PM tolak permintaan RAB
         'revised'            // Customer minta revisi
       ],
       default: 'pending' 

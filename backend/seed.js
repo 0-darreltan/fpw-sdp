@@ -138,37 +138,38 @@ async function seed() {
       status: "ongoing",
       startDate: new Date(),
       budget: 50000000,
+      progress: 30, // Add progress field
     });
 
     // ============================
     // 5. RAB
     // ============================
-    // 5. RAB
+    // RAB SEEDER - DISABLED (tidak perlu tambah data RAB)
     // ============================
-    console.log("Seeding RAB...");
+    console.log("Skipping RAB seeding (as requested)...");
 
-    const rab = await RAB.create({
-      customerId: customer._id,
-      customerName: customer.name,
-      customerEmail: customer.email,
-      projectId: project._id,
-      projectManagerId: pm._id,
-      projectManagerName: pm.name,
-      title: "RAB Renovasi Tahap 1",
-      description: "Rencana Anggaran Biaya untuk renovasi rumah tahap pertama",
-      location: "Jakarta Selatan",
-      estimatedBudget: 50000000,
-      items: [
-        {
-          description: "Pengecatan tembok",
-          qty: 10,
-          unit: "kaleng",
-          unitPrice: 95000,
-        },
-      ],
-      totalEstimated: 950000,
-      status: "pending",
-    });
+    // const rab = await RAB.create({
+    //   customerId: customer._id,
+    //   customerName: customer.name,
+    //   customerEmail: customer.email,
+    //   projectId: project._id,
+    //   projectManagerId: pm._id,
+    //   projectManagerName: pm.name,
+    //   title: "RAB Renovasi Tahap 1",
+    //   description: "Rencana Anggaran Biaya untuk renovasi rumah tahap pertama",
+    //   location: "Jakarta Selatan",
+    //   estimatedBudget: 50000000,
+    //   items: [
+    //     {
+    //       description: "Pengecatan tembok",
+    //       qty: 10,
+    //       unit: "kaleng",
+    //       unitPrice: 95000,
+    //     },
+    //   ],
+    //   totalEstimated: 950000,
+    //   status: "pending",
+    // });
 
 
 
@@ -215,28 +216,29 @@ async function seed() {
       },
     });
 
-    const checkout2 = await CheckOut.create({
-      user: customer._id,
-      orderType: "PROJECT",
-      rabId: rab._id,
-      items: [
-        {
-          productId: products[2]._id,
-          productName: products[2].name,
-          priceAtCheckout: products[2].price,
-          quantity: 10,
-        },
-      ],
-      subtotal: products[2].price * 10,
-      total: products[2].price * 10,
-      deliveryAddress: {
-        street: "Jl. Asia Afrika",
-        city: "Bandung",
-        province: "Jawa Barat",
-        postalCode: "66666",
-        country: "Indonesia",
-      },
-    });
+    // Checkout2 disabled (depends on RAB)
+    // const checkout2 = await CheckOut.create({
+    //   user: customer._id,
+    //   orderType: "PROJECT",
+    //   rabId: rab._id,
+    //   items: [
+    //     {
+    //       productId: products[2]._id,
+    //       productName: products[2].name,
+    //       priceAtCheckout: products[2].price,
+    //       quantity: 10,
+    //     },
+    //   ],
+    //   subtotal: products[2].price * 10,
+    //   total: products[2].price * 10,
+    //   deliveryAddress: {
+    //     street: "Jl. Asia Afrika",
+    //     city: "Bandung",
+    //     province: "Jawa Barat",
+    //     postalCode: "66666",
+    //     country: "Indonesia",
+    //   },
+    // });
 
     // ============================
     // 10. ORDERS
@@ -252,15 +254,16 @@ async function seed() {
       status: "payment_confirmed",
     });
 
-    await Order.create({
-      orderNumber: "ORD-002",
-      checkoutId: checkout2._id,
-      customerId: customer._id,
-      orderType: "PROJECT",
-      rabId: rab._id,
-      totalAmount: checkout2.total,
-      status: "payment_confirmed",
-    });
+    // Order 2 disabled (depends on RAB and checkout2)
+    // await Order.create({
+    //   orderNumber: "ORD-002",
+    //   checkoutId: checkout2._id,
+    //   customerId: customer._id,
+    //   orderType: "PROJECT",
+    //   rabId: rab._id,
+    //   totalAmount: checkout2.total,
+    //   status: "payment_confirmed",
+    // });
 
     // ============================
     // 11. ACTIVITY LOGS

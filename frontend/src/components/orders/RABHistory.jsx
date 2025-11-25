@@ -42,19 +42,19 @@ const RABHistory = ({ user }) => {
   const getStatusBadge = (status) => {
     const config = {
       pending: {
-        label: "Menunggu Review",
-        class: "bg-yellow-100 text-yellow-800",
-        icon: "⏳",
+        label: "Dalam Review PM",
+        class: "bg-blue-100 text-blue-800",
+        icon: "🔍",
       },
       reviewed: {
-        label: "Sedang Ditinjau",
+        label: "Dalam Review PM",
         class: "bg-blue-100 text-blue-800",
-        icon: "👁️",
+        icon: "🔍",
       },
       quoted: {
-        label: "Penawaran Dikirim",
-        class: "bg-purple-100 text-purple-800",
-        icon: "💰",
+        label: "Menunggu Persetujuan Anda",
+        class: "bg-yellow-100 text-yellow-800",
+        icon: "⏳",
       },
       accepted: {
         label: "Diterima",
@@ -62,9 +62,14 @@ const RABHistory = ({ user }) => {
         icon: "✅",
       },
       rejected: {
-        label: "Ditolak",
+        label: "Ditolak Customer",
         class: "bg-red-100 text-red-800",
         icon: "❌",
+      },
+      rejected_by_pm: {
+        label: "Ditolak PM",
+        class: "bg-orange-100 text-orange-800",
+        icon: "🚫",
       },
     };
     const statusInfo = config[status] || config.pending;
@@ -79,6 +84,8 @@ const RABHistory = ({ user }) => {
   };
 
   const handleViewDetail = (rab) => {
+    console.log("📋 RAB Detail:", rab);
+    console.log("📦 Items:", rab.items);
     setSelectedRAB(rab);
     setShowDetailModal(true);
   };
@@ -86,12 +93,18 @@ const RABHistory = ({ user }) => {
   const handleAcceptQuotation = async (rabId) => {
     if (
       window.confirm(
-        "Apakah Anda yakin ingin menerima penawaran RAB ini? Ini akan memulai proses proyek."
+        "Apakah Anda yakin ingin menerima penawaran RAB ini? Proyek akan langsung dimulai oleh Project Manager."
       )
     ) {
       try {
-        await dispatch(actionRab.acceptRABQuotation(rabId)).unwrap();
-        alert("✅ Penawaran RAB berhasil diterima!");
+        const result = await dispatch(actionRab.acceptRABQuotation(rabId)).unwrap();
+        
+        // Show success message with project info
+        const message = result.project 
+          ? `✅ Penawaran RAB berhasil diterima!\n\nProyek "${result.project.name}" telah dimulai dan sedang dikerjakan oleh Project Manager.`
+          : "✅ Penawaran RAB berhasil diterima!";
+        
+        alert(message);
         dispatch(actionRab.fetchRabs());
         setShowDetailModal(false);
       } catch (error) {
@@ -183,9 +196,9 @@ const RABHistory = ({ user }) => {
                   {rab.estimatedBudget > 0 && (
                     <span>💵 Estimasi: {formatCurrency(rab.estimatedBudget)}</span>
                   )}
-                  {rab.totalEstimatedCost > 0 && (
+                  {(rab.totalEstimated > 0 || rab.totalEstimatedCost > 0) && (
                     <span className="font-semibold text-blue-600">
-                      💰 Penawaran: {formatCurrency(rab.totalEstimatedCost)}
+                      💰 Penawaran: {formatCurrency(rab.totalEstimated || rab.totalEstimatedCost)}
                     </span>
                   )}
                 </div>
@@ -289,71 +302,106 @@ const RABHistory = ({ user }) => {
               )}
 
               {/* Items */}
-              {selectedRAB.items && selectedRAB.items.length > 0 && (
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    Material yang Diminta
-                  </h4>
-                  <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  {selectedRAB.status === 'quoted' ? 'Penawaran Material & Harga' : 'Material yang Diminta'}
+                </h4>
+                <div className="bg-gray-50 p-4 rounded-lg overflow-x-auto">
+                  {selectedRAB.items && selectedRAB.items.length > 0 ? (
                     <table className="min-w-full">
                       <thead>
                         <tr className="border-b border-gray-300">
-                          <th className="text-left py-2 text-sm font-medium text-gray-700">
+                          <th className="text-left py-2 px-2 text-sm font-medium text-gray-700">
+                            No
+                          </th>
+                          <th className="text-left py-2 px-2 text-sm font-medium text-gray-700">
                             Material
                           </th>
-                          <th className="text-right py-2 text-sm font-medium text-gray-700">
+                          <th className="text-center py-2 px-2 text-sm font-medium text-gray-700">
                             Jumlah
                           </th>
-                          <th className="text-right py-2 text-sm font-medium text-gray-700">
+                          <th className="text-center py-2 px-2 text-sm font-medium text-gray-700">
                             Satuan
                           </th>
+                          {selectedRAB.status === 'quoted' && (
+                            <>
+                              <th className="text-right py-2 px-2 text-sm font-medium text-gray-700">
+                                Harga Satuan
+                              </th>
+                              <th className="text-right py-2 px-2 text-sm font-medium text-gray-700">
+                                Total
+                              </th>
+                            </>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedRAB.items.map((item, index) => (
-                          <tr key={index} className="border-b border-gray-200">
-                            <td className="py-2 text-sm">{item.materialName}</td>
-                            <td className="py-2 text-sm text-right">
-                              {item.quantity}
+                        {selectedRAB.items.map((item, index) => {
+                          const quantity = item.quantity || 0;
+                          const unitPrice = item.unitPrice || 0;
+                          const total = quantity * unitPrice;
+                          
+                          return (
+                            <tr key={index} className="border-b border-gray-200">
+                              <td className="py-2 px-2 text-sm text-center">
+                                {index + 1}
+                              </td>
+                              <td className="py-2 px-2 text-sm">
+                                {item.materialName || item.name || "-"}
+                              </td>
+                              <td className="py-2 px-2 text-sm text-center">
+                                {quantity}
+                              </td>
+                              <td className="py-2 px-2 text-sm text-center">
+                                {item.unit || "pcs"}
+                              </td>
+                              {selectedRAB.status === 'quoted' && (
+                                <>
+                                  <td className="py-2 px-2 text-sm text-right">
+                                    {formatCurrency(unitPrice)}
+                                  </td>
+                                  <td className="py-2 px-2 text-sm text-right font-medium">
+                                    {formatCurrency(total)}
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                        {selectedRAB.status === 'quoted' && (
+                          <tr className="border-t-2 border-gray-400 bg-blue-50">
+                            <td colSpan="5" className="py-3 px-2 text-right font-bold text-gray-900">
+                              Total Keseluruhan:
                             </td>
-                            <td className="py-2 text-sm text-right">
-                              {item.unit}
+                            <td className="py-3 px-2 text-right font-bold text-blue-600 text-lg">
+                              {formatCurrency(selectedRAB.totalEstimated || 0)}
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <p>Tidak ada material yang tercatat</p>
+                      {selectedRAB.customerNotes && (
+                        <p className="text-xs mt-2">Catatan: {selectedRAB.customerNotes}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Catatan PM */}
+              {selectedRAB.status === "quoted" && selectedRAB.pmNotes && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Catatan Project Manager
+                  </h4>
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                    <p className="text-gray-700">{selectedRAB.pmNotes}</p>
                   </div>
                 </div>
               )}
-
-              {/* Penawaran */}
-              {selectedRAB.status === "quoted" &&
-                selectedRAB.totalEstimatedCost > 0 && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">
-                      Penawaran dari Project Manager
-                    </h4>
-                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-gray-700 font-medium">
-                          Total Estimasi Biaya:
-                        </span>
-                        <span className="text-2xl font-bold text-blue-600">
-                          {formatCurrency(selectedRAB.totalEstimatedCost)}
-                        </span>
-                      </div>
-                      {selectedRAB.notes && (
-                        <div className="mt-3 pt-3 border-t border-blue-200">
-                          <p className="text-sm text-gray-700">
-                            <span className="font-medium">Catatan PM:</span>{" "}
-                            {selectedRAB.notes}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
               {/* Action Buttons for Quoted Status */}
               {selectedRAB.status === "quoted" && (
@@ -369,6 +417,32 @@ const RABHistory = ({ user }) => {
                     className="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
                   >
                     ❌ Tolak Penawaran
+                  </button>
+                </div>
+              )}
+
+              {/* Payment Button for Accepted Status */}
+              {selectedRAB.status === "accepted" && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">✅</span>
+                      <h4 className="font-semibold text-green-900">
+                        Penawaran Telah Diterima
+                      </h4>
+                    </div>
+                    <p className="text-sm text-green-800">
+                      Proyek sedang dikerjakan oleh Project Manager. Silakan lakukan pembayaran untuk melanjutkan proses.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      alert("Fitur pembayaran akan segera tersedia");
+                    }}
+                    className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg flex items-center justify-center gap-3"
+                  >
+                    <span className="text-2xl">💳</span>
+                    <span>Bayar Sekarang - {formatCurrency(selectedRAB.totalEstimated || 0)}</span>
                   </button>
                 </div>
               )}

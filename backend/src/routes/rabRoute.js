@@ -13,6 +13,7 @@ const {
   sendRABQuotation,
   acceptRABQuotation,
   rejectRABQuotation,
+  rejectRABByPM,
 } = require("../controllers/rabController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -28,6 +29,9 @@ router.post("/request", authMiddleware, createRABRequest);
 // Customer: Accept/Reject RAB quotation
 router.post("/:id/accept", authMiddleware, acceptRABQuotation);
 router.post("/:id/reject", authMiddleware, rejectRABQuotation);
+
+// PM/Admin: Reject RAB request
+router.post("/:id/reject-by-pm", authMiddleware, rejectRABByPM);
 
 // PM: Assign RAB to self
 router.post("/:id/assign", authMiddleware, cekProjectManager, assignRABToMe);

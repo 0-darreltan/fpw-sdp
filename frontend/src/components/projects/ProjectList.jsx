@@ -3,6 +3,12 @@ import React, { useState } from "react";
 const ProjectList = ({ projects, user, onEditProject, onRequestMaterial }) => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [progressData, setProgressData] = useState({
+    progress: 0,
+    materialUsed: "",
+    notes: "",
+  });
   
   // Filter projects assigned to current PM
   // Handle both string IDs and ObjectId comparisons
@@ -16,6 +22,13 @@ const ProjectList = ({ projects, user, onEditProject, onRequestMaterial }) => {
       const isMatch = String(projectManagerId) === String(userId);
       return isMatch;
     });
+    
+    // Debug log to check progress field
+    console.log("🏗️ My Projects with Progress:", myProjects.map(p => ({
+      name: p.name,
+      progress: p.progress,
+      id: p.id
+    })));
   }
 
   const formatPrice = (price) => {
@@ -79,7 +92,12 @@ const ProjectList = ({ projects, user, onEditProject, onRequestMaterial }) => {
   };
 
   const getProgressPercentage = (project) => {
-    // Simple calculation based on project dates
+    // Use progress from database if available
+    if (project.progress !== undefined && project.progress !== null) {
+      return project.progress;
+    }
+
+    // Fallback: Simple calculation based on project dates
     if (!project.startDate || !project.endDate) return 0;
 
     const start = new Date(project.startDate);
@@ -230,34 +248,42 @@ const ProjectList = ({ projects, user, onEditProject, onRequestMaterial }) => {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 mt-6 pt-4 border-t border-gray-200">
-              <button 
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+            <div className="flex flex-col gap-2 mt-6 pt-4 border-t border-gray-200">
+              <div className="flex gap-2">
+                <button 
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                  onClick={() => {
+                    setSelectedProject(project);
+                    setShowDetailModal(true);
+                  }}
+                >
+                  Lihat Detail
+                </button>
+                <button 
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
+                  onClick={() => {
+                    if (onRequestMaterial) {
+                      onRequestMaterial(project);
+                    }
+                  }}
+                >
+                  Minta Material
+                </button>
+              </div>
+              <button
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200 text-sm font-medium"
                 onClick={() => {
                   setSelectedProject(project);
-                  setShowDetailModal(true);
+                  setProgressData({
+                    progress: getProgressPercentage(project),
+                    materialUsed: "",
+                    notes: "",
+                  });
+                  setShowProgressModal(true);
                 }}
               >
-                Lihat Detail
+                📊 Update Progress & Material
               </button>
-              <button 
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
-                onClick={() => {
-                  if (onRequestMaterial) {
-                    onRequestMaterial(project);
-                  }
-                }}
-              >
-                Minta Material
-              </button>
-              {onEditProject && (
-                <button
-                  className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors duration-200 text-sm font-medium"
-                  onClick={() => onEditProject(project)}
-                >
-                  Edit Proyek
-                </button>
-              )}
             </div>
           </div>
         ))}
@@ -357,6 +383,134 @@ const ProjectList = ({ projects, user, onEditProject, onRequestMaterial }) => {
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200 font-medium"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Update Progress & Material */}
+      {showProgressModal && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="bg-purple-600 text-white px-6 py-4 rounded-t-lg">
+              <h3 className="text-xl font-bold">📊 Update Progress & Material</h3>
+              <p className="text-sm opacity-90 mt-1">{selectedProject.name}</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Progress Slider */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Progress Proyek
+                </label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="10"
+                    value={progressData.progress}
+                    onChange={(e) =>
+                      setProgressData({ ...progressData, progress: parseInt(e.target.value) })
+                    }
+                    className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                  />
+                  <span className="text-2xl font-bold text-purple-600 min-w-[60px] text-right">
+                    {progressData.progress}%
+                  </span>
+                </div>
+                <div className="mt-2 w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-purple-600 h-3 rounded-full transition-all duration-300"
+                    style={{ width: `${progressData.progress}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Material Used */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Material yang Digunakan
+                </label>
+                <textarea
+                  value={progressData.materialUsed}
+                  onChange={(e) =>
+                    setProgressData({ ...progressData, materialUsed: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Contoh: Semen 10 sak, Besi 50kg, Pasir 2m³"
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Catatan Progress
+                </label>
+                <textarea
+                  value={progressData.notes}
+                  onChange={(e) =>
+                    setProgressData({ ...progressData, notes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Catatan pekerjaan yang sudah diselesaikan atau kendala yang dihadapi"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    const token = sessionStorage.getItem("token");
+                    console.log("📊 Updating progress for project:", selectedProject.id);
+                    console.log("📝 Progress data:", progressData);
+                    
+                    const response = await fetch(
+                      `http://localhost:3000/api/projects/${selectedProject.id}/progress`,
+                      {
+                        method: "PUT",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(progressData),
+                      }
+                    );
+
+                    console.log("📡 Response status:", response.status);
+                    const data = await response.json();
+                    console.log("📦 Response data:", data);
+
+                    if (response.ok && data.success) {
+                      alert("✅ Progress berhasil diupdate!");
+                      setShowProgressModal(false);
+                      setSelectedProject(null);
+                      // Refresh projects list
+                      window.location.reload();
+                    } else {
+                      throw new Error(data.message || "Gagal update progress");
+                    }
+                  } catch (error) {
+                    console.error("❌ Error updating progress:", error);
+                    alert("❌ Gagal update progress: " + error.message);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200 font-medium"
+              >
+                💾 Simpan Update
+              </button>
+              <button
+                onClick={() => {
+                  setShowProgressModal(false);
+                  setSelectedProject(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors duration-200 font-medium"
+              >
+                Batal
               </button>
             </div>
           </div>

@@ -144,11 +144,33 @@ const updateRAB = async (req, res) => {
     const { items, title, status } = req.body;
 
     if (items && items.length > 0) {
-      rab.items = items;
-      rab.totalEstimated = items.reduce(
-        (sum, item) => sum + item.qty * item.unitPrice,
+      // Normalize items to support both quantity and qty fields
+      rab.items = items.map(item => ({
+        productId: item.productId || "",
+        materialName: item.materialName || item.description || "",
+        description: item.description || "",
+        quantity: item.quantity || item.qty || 0,
+        unit: item.unit || "pcs",
+        unitPrice: item.unitPrice || 0,
+      }));
+      
+      // Calculate total from normalized items
+      rab.totalEstimated = rab.items.reduce(
+        (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
         0
       );
+      
+      console.log("📝 RAB Items Updated:", {
+        rabId: rab._id,
+        itemsCount: rab.items.length,
+        totalEstimated: rab.totalEstimated,
+        items: rab.items.map(i => ({
+          material: i.materialName,
+          qty: i.quantity,
+          price: i.unitPrice,
+          total: i.quantity * i.unitPrice
+        }))
+      });
     }
 
     if (title) rab.title = title;
@@ -196,6 +218,19 @@ const createRABRequest = async (req, res) => {
       items,
     } = req.body;
 
+    console.log("📥 Received RAB Request:", {
+      title,
+      description,
+      location,
+      estimatedBudget,
+      expectedStartDate,
+      customerNotes,
+      items,
+      itemsType: typeof items,
+      itemsIsArray: Array.isArray(items),
+      itemsLength: items?.length
+    });
+
     // Validasi required fields
     if (!title || !description || !location) {
       return res.status(400).json({
@@ -220,6 +255,11 @@ const createRABRequest = async (req, res) => {
     });
 
     await rab.save();
+
+    console.log("✅ RAB Saved:", {
+      id: rab._id,
+      items: rab.items
+    });
 
     // Create activity log
     await ActivityLog.create({
@@ -321,11 +361,12 @@ const sendRABQuotation = async (req, res) => {
       });
     }
 
-    // Hitung total
-    const totalEstimated = items.reduce(
-      (sum, item) => sum + (item.qty || 0) * (item.unitPrice || 0),
-      0
-    );
+    // Hitung total - support both quantity and qty fields
+    const totalEstimated = items.reduce((sum, item) => {
+      const quantity = parseFloat(item.quantity || item.qty) || 0;
+      const unitPrice = parseFloat(item.unitPrice) || 0;
+      return sum + (quantity * unitPrice);
+    }, 0);
 
     rab.items = items;
     rab.totalEstimated = totalEstimated;
@@ -333,14 +374,44 @@ const sendRABQuotation = async (req, res) => {
     rab.status = "quoted";
     rab.quotedAt = new Date();
     
-    if (projectId) {
-      rab.projectId = projectId;
-    }
-
+    console.log("💰 RAB Quotation:", {
+      rabId: rab._id,
+      itemsCount: items.length,
+      totalEstimated,
+      items: items.map(i => ({
+        material: i.materialName,
+        qty: i.quantity || i.qty,
+        price: i.unitPrice,
+        total: (i.quantity || i.qty) * i.unitPrice
+      }))
+    });
+    
     // Assign PM jika belum
     if (!rab.projectManagerId) {
       rab.projectManagerId = req.user._id;
       rab.projectManagerName = req.user.name;
+    }
+
+    // Auto-create project ketika PM approve RAB
+    let createdProject = null;
+    if (!rab.projectId && !projectId) {
+      const newProject = new Project({
+        name: rab.title,
+        location: rab.location,
+        description: rab.description || `Proyek untuk ${rab.customerName}`,
+        projectManagerId: req.user._id,
+        status: 'planning', // Status awal proyek
+        startDate: rab.expectedStartDate || new Date(),
+        budget: totalEstimated
+      });
+      
+      await newProject.save();
+      rab.projectId = newProject._id;
+      createdProject = newProject;
+      
+      console.log(`✅ Auto-created project: ${newProject.name} (ID: ${newProject._id})`);
+    } else if (projectId) {
+      rab.projectId = projectId;
     }
 
     await rab.save();
@@ -348,8 +419,8 @@ const sendRABQuotation = async (req, res) => {
     // Create activity log
     await ActivityLog.create({
       type: "rab_quoted",
-      title: "Penawaran RAB Dikirim",
-      description: `Project Manager ${req.user.name} mengirim penawaran RAB untuk "${rab.title}" kepada ${rab.customerName} dengan total estimasi Rp ${totalEstimated.toLocaleString('id-ID')}`,
+      title: "Penawaran RAB Dikirim & Proyek Dibuat",
+      description: `Project Manager ${req.user.name} mengirim penawaran RAB untuk "${rab.title}" kepada ${rab.customerName} dengan total estimasi Rp ${totalEstimated.toLocaleString('id-ID')}${createdProject ? ` dan membuat proyek baru "${createdProject.name}"` : ''}`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -360,6 +431,8 @@ const sendRABQuotation = async (req, res) => {
         title: rab.title,
         totalEstimated,
         itemsCount: items.length,
+        projectId: rab.projectId,
+        projectCreated: !!createdProject,
       },
     });
 
@@ -370,8 +443,11 @@ const sendRABQuotation = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "RAB quotation sent successfully",
+      message: createdProject 
+        ? "RAB quotation sent and project created successfully" 
+        : "RAB quotation sent successfully",
       data: populatedRAB,
+      project: createdProject,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -405,11 +481,24 @@ const acceptRABQuotation = async (req, res) => {
     rab.respondedAt = new Date();
     await rab.save();
 
+    // Get project info if exists
+    let projectInfo = null;
+    if (rab.projectId) {
+      projectInfo = await Project.findById(rab.projectId).select('name location status budget');
+      
+      // Update project status to active when customer accepts
+      if (projectInfo && projectInfo.status === 'planning') {
+        projectInfo.status = 'in-progress';
+        await projectInfo.save();
+        console.log(`✅ Project "${projectInfo.name}" activated after RAB acceptance`);
+      }
+    }
+
     // Create activity log
     await ActivityLog.create({
       type: "rab_accepted",
       title: "Penawaran RAB Diterima",
-      description: `Customer ${req.user.name} menerima penawaran RAB "${rab.title}" dengan total Rp ${rab.totalEstimated.toLocaleString('id-ID')}`,
+      description: `Customer ${req.user.name} menerima penawaran RAB "${rab.title}" dengan total Rp ${rab.totalEstimated.toLocaleString('id-ID')}${projectInfo ? ` - Proyek "${projectInfo.name}" dimulai` : ''}`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -418,12 +507,70 @@ const acceptRABQuotation = async (req, res) => {
         rabId: rab._id,
         title: rab.title,
         totalEstimated: rab.totalEstimated,
+        projectId: rab.projectId,
+        projectName: projectInfo?.name,
       },
     });
 
     res.status(200).json({
       success: true,
-      message: "RAB quotation accepted",
+      message: projectInfo 
+        ? `RAB accepted and project "${projectInfo.name}" is now active`
+        : "RAB quotation accepted",
+      data: rab,
+      project: projectInfo,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ PM: Reject RAB request
+const rejectRABByPM = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    const rab = await RAB.findById(req.params.id);
+    if (!rab) {
+      return res.status(404).json({ success: false, message: "RAB not found" });
+    }
+
+    // Hanya PM yang sudah di-assign atau admin yang bisa reject
+    if (req.user.role !== "admin" && 
+        (!rab.projectManagerId || rab.projectManagerId.toString() !== req.user._id.toString())) {
+      return res.status(403).json({
+        success: false,
+        message: "Only assigned PM or admin can reject this RAB",
+      });
+    }
+
+    rab.status = "rejected_by_pm";
+    rab.respondedAt = new Date();
+    if (reason) {
+      rab.pmNotes = (rab.pmNotes || "") + "\n\nRejection reason: " + reason;
+    }
+    await rab.save();
+
+    // Create activity log
+    await ActivityLog.create({
+      type: "rab_rejected_by_pm",
+      title: "Permintaan RAB Ditolak PM",
+      description: `Project Manager ${req.user.name} menolak permintaan RAB "${rab.title}" dari ${rab.customerName}. Alasan: ${reason || "Tidak disebutkan"}`,
+      userId: req.user._id,
+      userName: req.user.name,
+      userRole: req.user.role,
+      icon: "🚫",
+      metadata: {
+        rabId: rab._id,
+        customerName: rab.customerName,
+        title: rab.title,
+        reason,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "RAB rejected by PM",
       data: rab,
     });
   } catch (error) {
@@ -638,4 +785,5 @@ module.exports = {
   sendRABQuotation,
   acceptRABQuotation,
   rejectRABQuotation,
+  rejectRABByPM,
 };

@@ -1,5 +1,14 @@
 const mongoose = require('mongoose');
 
+const ProgressHistorySchema = new mongoose.Schema({
+  progress: { type: Number, default: 0 },
+  materialUsed: { type: String },
+  notes: { type: String },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedByName: { type: String },
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: true });
+
 const ProjectSchema = new mongoose.Schema(
   {
     name: { type: String },
@@ -9,7 +18,9 @@ const ProjectSchema = new mongoose.Schema(
     status: { type: String },
     startDate: { type: Date },
     endDate: { type: Date },
-    budget: { type: Number }
+    budget: { type: Number },
+    progress: { type: Number, default: 0 },
+    progressHistory: [ProgressHistorySchema]
   },
   { timestamps: true }
 );

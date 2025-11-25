@@ -156,10 +156,89 @@ const deleteProject = async (req, res) => {
   }
 };
 
+// ✅ Update project progress & material usage
+const updateProjectProgress = async (req, res) => {
+  try {
+    const { progress, materialUsed, notes } = req.body;
+    
+    console.log("📊 Update Progress Request:", { projectId: req.params.id, progress, materialUsed, notes });
+    
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      console.error("❌ Project not found:", req.params.id);
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+
+    console.log("✅ Found project:", project.name);
+
+    // Update progress
+    if (progress !== undefined && progress !== null) {
+      project.progress = progress;
+    }
+
+    // Initialize progressHistory array if it doesn't exist
+    if (!Array.isArray(project.progressHistory)) {
+      project.progressHistory = [];
+    }
+
+    // Add new history entry
+    const historyEntry = {
+      progress: progress !== undefined ? progress : (project.progress || 0),
+      materialUsed: materialUsed || "",
+      notes: notes || "",
+      updatedBy: req.user?._id,
+      updatedByName: req.user?.name,
+      updatedAt: new Date(),
+    };
+
+    console.log("📝 Adding history entry:", historyEntry);
+    project.progressHistory.push(historyEntry);
+
+    await project.save();
+    console.log("✅ Project saved successfully");
+
+    // Create activity log
+    if (req.user) {
+      try {
+        await ActivityLog.create({
+          type: "project_progress_updated",
+          title: "Progress Proyek Diupdate",
+          description: `${req.user.name} mengupdate progress proyek "${project.name}" menjadi ${progress}%${materialUsed ? ` dan mencatat penggunaan material` : ''}`,
+          userId: req.user._id,
+          userName: req.user.name,
+          userRole: req.user.role,
+          projectId: project._id,
+          icon: "📊",
+          metadata: {
+            projectName: project.name,
+            progress,
+            materialUsed,
+            notes,
+          },
+        });
+        console.log("✅ Activity log created");
+      } catch (logError) {
+        console.error("⚠️ Failed to create activity log:", logError.message);
+        // Don't fail the request if activity log fails
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Project progress updated successfully",
+      data: project,
+    });
+  } catch (error) {
+    console.error("❌ Error updating project progress:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getProject,
   getProjectById,
   createProject,
   updateProject,
   deleteProject,
+  updateProjectProgress,
 };
