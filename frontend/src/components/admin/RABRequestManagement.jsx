@@ -9,7 +9,8 @@ import {
 const RABRequestManagement = () => {
   const dispatch = useDispatch();
   const { listRabs, loading } = useSelector((state) => state.rab);
-  const { user } = useSelector((state) => state.users);
+  const { currUsers } = useSelector((state) => state.users);
+  const user = currUsers?.user;
 
   const [filter, setFilter] = useState("all");
   const [selectedRAB, setSelectedRAB] = useState(null);
@@ -20,10 +21,95 @@ const RABRequestManagement = () => {
     totalEstimatedCost: 0,
     notes: "",
   });
+  const [projectManagers, setProjectManagers] = useState([]);
+  const [selectedPMId, setSelectedPMId] = useState("");
 
   useEffect(() => {
     dispatch(fetchRabs());
+    fetchProjectManagers();
   }, [dispatch]);
+
+  const fetchProjectManagers = async () => {
+    try {
+      const response = await fetch({
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProjectManagers(data.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch project managers:", error);
+    }
+  };
+
+  const handleAssignPM = async (rabId, pmId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/rab/${rabId}/assign`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ projectManagerId: pmId }),
+        }
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Project Manager berhasil di-assign!");
+        dispatch(fetchRabs());
+        setShowDetailModal(false);
+      } else {
+        alert("Gagal assign Project Manager: " + data.message);
+      }
+    } catch (error) {
+      alert("Gagal assign Project Manager: " + error.message);
+    }
+  };
+
+  const handleUpdateStatus = async (rabId, newStatus) => {
+    const statusLabels = {
+      reviewed: "Review",
+      accepted: "Diterima",
+      rejected: "Ditolak",
+    };
+
+    if (
+      window.confirm(
+        `Apakah Anda yakin ingin mengubah status menjadi "${statusLabels[newStatus]}"?`
+      )
+    ) {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/rab/${rabId}/status`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ status: newStatus }),
+          }
+        );
+
+        const data = await response.json();
+        if (data.success) {
+          alert("Status berhasil diupdate!");
+          dispatch(fetchRabs());
+          setShowDetailModal(false);
+        } else {
+          alert("Gagal update status: " + data.message);
+        }
+      } catch (error) {
+        alert("Gagal update status: " + error.message);
+      }
+    }
+  };
 
   const filteredRABs =
     filter === "all"
@@ -32,15 +118,26 @@ const RABRequestManagement = () => {
 
   const getStatusBadge = (status) => {
     const config = {
-      pending: { label: "Menunggu Review", class: "bg-yellow-100 text-yellow-800" },
+      pending: {
+        label: "Menunggu Review",
+        class: "bg-yellow-100 text-yellow-800",
+      },
       reviewed: { label: "Dalam Review", class: "bg-blue-100 text-blue-800" },
-      quoted: { label: "Quotation Dikirim", class: "bg-purple-100 text-purple-800" },
-      accepted: { label: "Diterima Customer", class: "bg-green-100 text-green-800" },
+      quoted: {
+        label: "Quotation Dikirim",
+        class: "bg-purple-100 text-purple-800",
+      },
+      accepted: {
+        label: "Diterima Customer",
+        class: "bg-green-100 text-green-800",
+      },
       rejected: { label: "Ditolak Customer", class: "bg-red-100 text-red-800" },
     };
     const { label, class: className } = config[status] || config.pending;
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${className}`}>
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-medium ${className}`}
+      >
         {label}
       </span>
     );
@@ -48,6 +145,7 @@ const RABRequestManagement = () => {
 
   const handleViewDetail = (rab) => {
     setSelectedRAB(rab);
+    setSelectedPMId(rab.projectManagerId?._id || "");
     setShowDetailModal(true);
   };
 
@@ -411,14 +509,47 @@ const RABRequestManagement = () => {
                       {formatDate(selectedRAB.createdAt)}
                     </span>
                   </div>
-                  {selectedRAB.projectManagerId && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Ditangani Oleh:</span>
-                      <span className="font-medium">
-                        {selectedRAB.projectManagerId.name}
-                      </span>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-gray-600">Project Manager:</span>
+                    <div className="flex gap-2">
+                      <select
+                        value={
+                          selectedPMId ||
+                          selectedRAB.projectManagerId?._id ||
+                          ""
+                        }
+                        onChange={(e) => setSelectedPMId(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Pilih Project Manager</option>
+                        {projectManagers.map((pm) => (
+                          <option key={pm._id} value={pm._id}>
+                            {pm.name} - {pm.email}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          if (!selectedPMId) {
+                            alert("Pilih Project Manager terlebih dahulu!");
+                            return;
+                          }
+                          handleAssignPM(selectedRAB._id, selectedPMId);
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                      >
+                        Assign PM
+                      </button>
                     </div>
-                  )}
+                    {selectedRAB.projectManagerId && (
+                      <div className="text-sm text-gray-500">
+                        Saat ini:{" "}
+                        <span className="font-medium">
+                          {selectedRAB.projectManagerId.name}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -471,6 +602,47 @@ const RABRequestManagement = () => {
                 </div>
               </div>
 
+              {/* Update Status Buttons - Only for Admin */}
+              {user?.role === "admin" && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Update Status Permintaan
+                  </h4>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(selectedRAB._id, "reviewed")
+                        }
+                        className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Review
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(selectedRAB._id, "accepted")
+                        }
+                        className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                      >
+                        Diterima
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(selectedRAB._id, "rejected")
+                        }
+                        className="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                      >
+                        Ditolak
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Klik salah satu tombol untuk mengubah status permintaan
+                      RAB ini
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Quotation if exists */}
               {selectedRAB.totalEstimatedCost > 0 && (
                 <div>
@@ -500,12 +672,78 @@ const RABRequestManagement = () => {
             </div>
 
             <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Tutup
-              </button>
+              <div className="space-y-3">
+                {/* Action Buttons Row */}
+                <div className="flex gap-3 flex-wrap">
+                  {user?.role === "project_manager" && (
+                    <>
+                      {!selectedRAB.projectManagerId && (
+                        <button
+                          onClick={() => handleAssignToMe(selectedRAB._id)}
+                          className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                        >
+                          Assign to Me
+                        </button>
+                      )}
+                      {selectedRAB.projectManagerId?._id === user?._id &&
+                        selectedRAB.status === "reviewed" && (
+                          <button
+                            onClick={() => {
+                              setShowDetailModal(false);
+                              handleSendQuotation(selectedRAB);
+                            }}
+                            className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                          >
+                            Send Quotation
+                          </button>
+                        )}
+                    </>
+                  )}
+
+                  {user?.role === "admin" && (
+                    <>
+                      {selectedRAB.status === "pending" && (
+                        <button
+                          onClick={() =>
+                            handleUpdateStatus(selectedRAB._id, "reviewed")
+                          }
+                          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          Mark as Reviewed
+                        </button>
+                      )}
+                      {selectedRAB.status === "quoted" && (
+                        <>
+                          <button
+                            onClick={() =>
+                              handleUpdateStatus(selectedRAB._id, "accepted")
+                            }
+                            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                          >
+                            Accept Quotation
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleUpdateStatus(selectedRAB._id, "rejected")
+                            }
+                            className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                          >
+                            Reject Quotation
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>
