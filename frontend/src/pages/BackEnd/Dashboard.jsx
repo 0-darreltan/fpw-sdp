@@ -89,7 +89,7 @@ const Dashboard = ({ data }) => {
             <p className="text-gray-500">Belum ada aktivitas</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
             {listActivities.map((activity) => (
               <div
                 key={activity._id}
