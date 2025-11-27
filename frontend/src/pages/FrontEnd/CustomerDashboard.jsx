@@ -101,7 +101,8 @@ const CustomerDashboard = () => {
       // Create RAB request
       const rabData = {
         title: orderData.projectName,
-        description: orderData.projectDescription || `Proyek ${orderData.projectName}`,
+        description:
+          orderData.projectDescription || `Proyek ${orderData.projectName}`,
         location: orderData.projectLocation,
         estimatedBudget: orderData.total,
         expectedStartDate: orderData.startDate,

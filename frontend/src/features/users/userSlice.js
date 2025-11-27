@@ -215,7 +215,6 @@ const userSlice = createSlice({
       })
       .addCase(LoginUser.fulfilled, (state, action) => {
         state.loading = false;
-        // Store the current user in a consistent shape: { user: {...} }
         state.currUsers = { user: action.payload.user };
         state.token = action.payload.token;
         state.loggedInUser = action.payload.user;

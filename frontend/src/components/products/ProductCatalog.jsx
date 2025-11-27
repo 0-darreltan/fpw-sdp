@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { actionProduct } from "../../features/product/productSlice";
+import Cart from "./Cart";
+import { actionCart } from "../../features/cart/cartSlice";
 
-const ProductCatalog = ({ onAddToCart }) => {
+const ProductCatalog = () => {
   const dispatch = useDispatch();
+
+  const [showCart, setShowCart] = useState(false);
+
+  const cartItems = useSelector((state) => state.cart?.items || []);
 
   // ✅ Get data from Redux
   const { listProducts, loading, error } = useSelector(
@@ -12,7 +18,7 @@ const ProductCatalog = ({ onAddToCart }) => {
 
   const [localError, setLocalError] = useState(null);
 
-  // ✅ Fetch products saat component mount
+  // ✅ Fetch products dan cart saat component mount
   useEffect(() => {
     let mounted = true;
 
@@ -20,6 +26,7 @@ const ProductCatalog = ({ onAddToCart }) => {
       try {
         console.log("🚀 Fetching products...");
         dispatch(actionProduct.fetchProduct());
+        dispatch(actionCart.fetchCart()); // Fetch cart untuk update badge
         if (mounted) console.log("✅ Products loaded successfully");
       } catch (err) {
         if (mounted) {
@@ -118,7 +125,7 @@ const ProductCatalog = ({ onAddToCart }) => {
   // ✅ Render products
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-      <div className="mb-6">
+      <div className="mb-6 relative">
         <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">
           Katalog Produk
         </h3>
@@ -128,6 +135,18 @@ const ProductCatalog = ({ onAddToCart }) => {
         <p className="text-sm text-blue-600 mt-2">
           📊 Menampilkan {listProducts.length} produk
         </p>
+
+        <button
+          onClick={() => setShowCart(true)}
+          className="absolute right-0 top-0 mt-2 mr-2 bg-white border border-gray-200 px-3 py-2 rounded-lg shadow-sm flex items-center gap-2"
+          title="Buka Keranjang Pembelian"
+        >
+          <span className="text-lg">🛒</span>
+          <span className="font-medium">Keranjang Pembelian</span>
+          <span className="ml-2 bg-red-600 text-white text-xs px-2 py-0.5 rounded">
+            {cartItems.length || 0}
+          </span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
@@ -194,23 +213,40 @@ const ProductCatalog = ({ onAddToCart }) => {
 
               <div className="px-4 pb-4">
                 <button
-                  onClick={() =>
-                    onAddToCart &&
-                    onAddToCart({
-                      ...product,
-                      id, // ✅ ensure consistent id
-                    })
-                  }
+                  onClick={async () => {
+                    try {
+                      // Add to backend cart for material purchase
+                      await dispatch(
+                        actionCart.upsertItemInCart({
+                          productId: id,
+                          quantity: 1,
+                        })
+                      ).unwrap();
+                      // Refresh cart to get updated items
+                      await dispatch(actionCart.fetchCart());
+                      alert(
+                        `${product?.name || "Produk"} ditambahkan ke keranjang!`
+                      );
+                    } catch (err) {
+                      console.error("Failed to add to cart:", err);
+                      alert(
+                        "Gagal menambahkan ke keranjang: " +
+                          (err.message || err)
+                      );
+                    }
+                  }}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
                 >
                   <span>🛒</span>
-                  <span>Tambah ke Pesanan</span>
+                  <span>Tambah ke Keranjang</span>
                 </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {showCart && <Cart onClose={() => setShowCart(false)} />}
 
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 sm:p-8">
         <div className="text-center">

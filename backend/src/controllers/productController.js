@@ -15,9 +15,9 @@ const getProduct = async (req, res) => {
 
     const products = await Product.find(query).sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, data: products });
+    return res.status(200).json({ success: true, data: products });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -32,9 +32,9 @@ const getProductById = async (req, res) => {
         .json({ success: false, message: "Product not found" });
     }
 
-    res.status(200).json({ success: true, data: product });
+    return res.status(200).json({ success: true, data: product });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -47,8 +47,16 @@ const createProduct = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
 
-    const { name, category, price, unit, stock, description, status, metadata } =
-      req.body;
+    const {
+      name,
+      category,
+      price,
+      unit,
+      stock,
+      description,
+      status,
+      metadata,
+    } = req.body;
 
     const product = new Product({
       name,
@@ -84,13 +92,13 @@ const createProduct = async (req, res) => {
       });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Product created successfully",
       data: product,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -114,14 +122,26 @@ const updateProduct = async (req, res) => {
     });
 
     // Log activity if stock changed
-    if (req.user && req.body.stock !== undefined && oldProduct.stock !== req.body.stock) {
+    if (
+      req.user &&
+      req.body.stock !== undefined &&
+      oldProduct.stock !== req.body.stock
+    ) {
       const stockDiff = req.body.stock - oldProduct.stock;
       const isIncrease = stockDiff > 0;
-      
+
       await ActivityLog.create({
         type: "stock_reduced",
-        title: isIncrease ? "Stok Material Ditambah" : "Stok Material Berkurang",
-        description: `${req.user.name} ${isIncrease ? 'menambah' : 'mengurangi'} stok "${product.name}" sebanyak ${Math.abs(stockDiff)} ${product.unit}. Stok sekarang: ${product.stock} ${product.unit} (sebelumnya: ${oldProduct.stock} ${product.unit})`,
+        title: isIncrease
+          ? "Stok Material Ditambah"
+          : "Stok Material Berkurang",
+        description: `${req.user.name} ${
+          isIncrease ? "menambah" : "mengurangi"
+        } stok "${product.name}" sebanyak ${Math.abs(stockDiff)} ${
+          product.unit
+        }. Stok sekarang: ${product.stock} ${product.unit} (sebelumnya: ${
+          oldProduct.stock
+        } ${product.unit})`,
         userId: req.user._id,
         userName: req.user.name,
         userRole: req.user.role,
@@ -137,13 +157,13 @@ const updateProduct = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Product updated successfully",
       data: product,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -157,11 +177,11 @@ const deleteProduct = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Product not found" });
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Product deleted successfully" });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

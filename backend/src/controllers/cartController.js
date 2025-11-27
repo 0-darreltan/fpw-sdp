@@ -16,9 +16,9 @@ const getCart = async (req, res) => {
       return res.status(200).json({ success: true, data: { items: [] } });
     }
 
-    res.status(200).json({ success: true, data: cart });
+    return res.status(200).json({ success: true, data: cart });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -30,16 +30,16 @@ const upsertItemInCart = async (req, res) => {
 
     // Validasi input
     if (!productId || !quantity) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "ProductId and quantity are required." 
+      return res.status(400).json({
+        success: false,
+        message: "ProductId and quantity are required.",
       });
     }
 
     if (quantity < 1) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Quantity must be at least 1." 
+      return res.status(400).json({
+        success: false,
+        message: "Quantity must be at least 1.",
       });
     }
 
@@ -87,11 +87,11 @@ const upsertItemInCart = async (req, res) => {
       select: "name price image unit",
     });
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Cart updated.", data: updatedCart });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -129,13 +129,13 @@ const deleteItemFromCart = async (req, res) => {
       select: "name price image unit",
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Item removed from cart.",
       data: updatedCart,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -154,11 +154,11 @@ const clearCart = async (req, res) => {
         .json({ success: false, message: "Cart not found." });
     }
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Cart cleared.", data: cart });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

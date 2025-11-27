@@ -9,7 +9,10 @@ import paymentReducer from "../features/payment/paymentSlice";
 import rabReducer from "../features/RAB/rabSlice";
 import materialRequestReducer from "../features/materialRequest/materialRequestSlice";
 import cartReducer from "../features/cart/cartSlice";
+import purchaseCartReducer from "../features/purchaseCart/purchaseCartSlice";
 import activityReducer from "../features/activity/activitySlice";
+import checkoutReducer from "../features/checkout/checkoutSlice";
+import shippingReducer from "../features/shipping/shippingSlice";
 import {
   FLUSH,
   REHYDRATE,
@@ -30,8 +33,18 @@ const cartPersistConfig = {
   whitelist: ["items"], // Only persist items array
 };
 
+const purchaseCartPersistConfig = {
+  key: "purchaseCart",
+  storage,
+  whitelist: ["items"],
+};
+
 const persistUserReducer = persistReducer(persistConfig, userReducer);
 const persistCartReducer = persistReducer(cartPersistConfig, cartReducer);
+const persistPurchaseCartReducer = persistReducer(
+  purchaseCartPersistConfig,
+  purchaseCartReducer
+);
 
 export const store = configureStore({
   reducer: {
@@ -43,7 +56,10 @@ export const store = configureStore({
     rab: rabReducer,
     materialRequest: materialRequestReducer,
     cart: persistCartReducer,
+    purchaseCart: persistPurchaseCartReducer,
+    checkout: checkoutReducer,
     activity: activityReducer,
+    shipping: shippingReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -7,6 +7,8 @@ const webhookRouter = require("./webhookRoute");
 const materialRequestRouter = require("./materialRequestRoute");
 const activityRouter = require("./activityRoute");
 const cartRouter = require("./cartRoute");
+const checkoutRouter = require("./checkoutRoute");
+// const shippingRouter = require("./shippingRoute");
 
 module.exports = {
   userRouter,
@@ -16,6 +18,8 @@ module.exports = {
   orderRouter,
   webhookRouter,
   materialRequestRouter,
+  checkoutRouter,
   activityRouter,
   cartRouter,
+  // shippingRouter,
 };

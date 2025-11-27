@@ -44,7 +44,7 @@ const getRAB = async (req, res) => {
 
     console.log("📋 RAB Results:", {
       count: rabs.length,
-      data: rabs.map(r => ({
+      data: rabs.map((r) => ({
         id: r._id,
         title: r.title,
         status: r.status,
@@ -53,10 +53,10 @@ const getRAB = async (req, res) => {
       })),
     });
 
-    res.status(200).json({ success: true, data: rabs });
+    return res.status(200).json({ success: true, data: rabs });
   } catch (error) {
-    console.error("❌ RAB Query Error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("RAB Query Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -71,9 +71,9 @@ const getRABById = async (req, res) => {
       return res.status(404).json({ success: false, message: "RAB not found" });
     }
 
-    res.status(200).json({ success: true, data: rab });
+    return res.status(200).json({ success: true, data: rab });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -118,13 +118,13 @@ const createRAB = async (req, res) => {
 
     await rab.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "RAB created successfully",
       data: rab,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -145,7 +145,7 @@ const updateRAB = async (req, res) => {
 
     if (items && items.length > 0) {
       // Normalize items to support both quantity and qty fields
-      rab.items = items.map(item => ({
+      rab.items = items.map((item) => ({
         productId: item.productId || "",
         materialName: item.materialName || item.description || "",
         description: item.description || "",
@@ -153,23 +153,25 @@ const updateRAB = async (req, res) => {
         unit: item.unit || "pcs",
         unitPrice: item.unitPrice || 0,
       }));
-      
+
       // Calculate total from normalized items
       rab.totalEstimated = rab.items.reduce(
-        (sum, item) => sum + (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
+        (sum, item) =>
+          sum +
+          (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0),
         0
       );
-      
+
       console.log("📝 RAB Items Updated:", {
         rabId: rab._id,
         itemsCount: rab.items.length,
         totalEstimated: rab.totalEstimated,
-        items: rab.items.map(i => ({
+        items: rab.items.map((i) => ({
           material: i.materialName,
           qty: i.quantity,
           price: i.unitPrice,
-          total: i.quantity * i.unitPrice
-        }))
+          total: i.quantity * i.unitPrice,
+        })),
       });
     }
 
@@ -178,13 +180,13 @@ const updateRAB = async (req, res) => {
 
     await rab.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB updated successfully",
       data: rab,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -196,12 +198,12 @@ const deleteRAB = async (req, res) => {
     if (!rab)
       return res.status(404).json({ success: false, message: "RAB not found" });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -228,7 +230,7 @@ const createRABRequest = async (req, res) => {
       items,
       itemsType: typeof items,
       itemsIsArray: Array.isArray(items),
-      itemsLength: items?.length
+      itemsLength: items?.length,
     });
 
     // Validasi required fields
@@ -258,14 +260,22 @@ const createRABRequest = async (req, res) => {
 
     console.log("✅ RAB Saved:", {
       id: rab._id,
-      items: rab.items
+      items: rab.items,
     });
 
     // Create activity log
     await ActivityLog.create({
       type: "rab_request_created",
       title: "Permintaan RAB Baru",
-      description: `Customer ${req.user.name} mengajukan permintaan RAB untuk "${title}" di ${location}${estimatedBudget ? ` dengan estimasi budget Rp ${estimatedBudget.toLocaleString('id-ID')}` : ''}`,
+      description: `Customer ${
+        req.user.name
+      } mengajukan permintaan RAB untuk "${title}" di ${location}${
+        estimatedBudget
+          ? ` dengan estimasi budget Rp ${estimatedBudget.toLocaleString(
+              "id-ID"
+            )}`
+          : ""
+      }`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -278,13 +288,13 @@ const createRABRequest = async (req, res) => {
       },
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "RAB request submitted successfully",
       data: rab,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -354,7 +364,10 @@ const sendRABQuotation = async (req, res) => {
     }
 
     // Hanya PM yang assigned yang bisa kirim quotation
-    if (rab.projectManagerId && rab.projectManagerId.toString() !== req.user._id.toString()) {
+    if (
+      rab.projectManagerId &&
+      rab.projectManagerId.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({
         success: false,
         message: "Only assigned PM can send quotation",
@@ -365,7 +378,7 @@ const sendRABQuotation = async (req, res) => {
     const totalEstimated = items.reduce((sum, item) => {
       const quantity = parseFloat(item.quantity || item.qty) || 0;
       const unitPrice = parseFloat(item.unitPrice) || 0;
-      return sum + (quantity * unitPrice);
+      return sum + quantity * unitPrice;
     }, 0);
 
     rab.items = items;
@@ -373,19 +386,19 @@ const sendRABQuotation = async (req, res) => {
     rab.pmNotes = pmNotes;
     rab.status = "quoted";
     rab.quotedAt = new Date();
-    
+
     console.log("💰 RAB Quotation:", {
       rabId: rab._id,
       itemsCount: items.length,
       totalEstimated,
-      items: items.map(i => ({
+      items: items.map((i) => ({
         material: i.materialName,
         qty: i.quantity || i.qty,
         price: i.unitPrice,
-        total: (i.quantity || i.qty) * i.unitPrice
-      }))
+        total: (i.quantity || i.qty) * i.unitPrice,
+      })),
     });
-    
+
     // Assign PM jika belum
     if (!rab.projectManagerId) {
       rab.projectManagerId = req.user._id;
@@ -400,16 +413,18 @@ const sendRABQuotation = async (req, res) => {
         location: rab.location,
         description: rab.description || `Proyek untuk ${rab.customerName}`,
         projectManagerId: req.user._id,
-        status: 'planning', // Status awal proyek
+        status: "planning", // Status awal proyek
         startDate: rab.expectedStartDate || new Date(),
-        budget: totalEstimated
+        budget: totalEstimated,
       });
-      
+
       await newProject.save();
       rab.projectId = newProject._id;
       createdProject = newProject;
-      
-      console.log(`✅ Auto-created project: ${newProject.name} (ID: ${newProject._id})`);
+
+      console.log(
+        `✅ Auto-created project: ${newProject.name} (ID: ${newProject._id})`
+      );
     } else if (projectId) {
       rab.projectId = projectId;
     }
@@ -420,7 +435,15 @@ const sendRABQuotation = async (req, res) => {
     await ActivityLog.create({
       type: "rab_quoted",
       title: "Penawaran RAB Dikirim & Proyek Dibuat",
-      description: `Project Manager ${req.user.name} mengirim penawaran RAB untuk "${rab.title}" kepada ${rab.customerName} dengan total estimasi Rp ${totalEstimated.toLocaleString('id-ID')}${createdProject ? ` dan membuat proyek baru "${createdProject.name}"` : ''}`,
+      description: `Project Manager ${
+        req.user.name
+      } mengirim penawaran RAB untuk "${rab.title}" kepada ${
+        rab.customerName
+      } dengan total estimasi Rp ${totalEstimated.toLocaleString("id-ID")}${
+        createdProject
+          ? ` dan membuat proyek baru "${createdProject.name}"`
+          : ""
+      }`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -441,16 +464,16 @@ const sendRABQuotation = async (req, res) => {
       .populate("projectManagerId", "name email role")
       .populate("projectId", "name location");
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: createdProject 
-        ? "RAB quotation sent and project created successfully" 
+      message: createdProject
+        ? "RAB quotation sent and project created successfully"
         : "RAB quotation sent successfully",
       data: populatedRAB,
       project: createdProject,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -484,13 +507,17 @@ const acceptRABQuotation = async (req, res) => {
     // Get project info if exists
     let projectInfo = null;
     if (rab.projectId) {
-      projectInfo = await Project.findById(rab.projectId).select('name location status budget');
-      
+      projectInfo = await Project.findById(rab.projectId).select(
+        "name location status budget"
+      );
+
       // Update project status to active when customer accepts
-      if (projectInfo && projectInfo.status === 'planning') {
-        projectInfo.status = 'in-progress';
+      if (projectInfo && projectInfo.status === "planning") {
+        projectInfo.status = "in-progress";
         await projectInfo.save();
-        console.log(`✅ Project "${projectInfo.name}" activated after RAB acceptance`);
+        console.log(
+          `✅ Project "${projectInfo.name}" activated after RAB acceptance`
+        );
       }
     }
 
@@ -498,7 +525,11 @@ const acceptRABQuotation = async (req, res) => {
     await ActivityLog.create({
       type: "rab_accepted",
       title: "Penawaran RAB Diterima",
-      description: `Customer ${req.user.name} menerima penawaran RAB "${rab.title}" dengan total Rp ${rab.totalEstimated.toLocaleString('id-ID')}${projectInfo ? ` - Proyek "${projectInfo.name}" dimulai` : ''}`,
+      description: `Customer ${req.user.name} menerima penawaran RAB "${
+        rab.title
+      }" dengan total Rp ${rab.totalEstimated.toLocaleString("id-ID")}${
+        projectInfo ? ` - Proyek "${projectInfo.name}" dimulai` : ""
+      }`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -512,16 +543,16 @@ const acceptRABQuotation = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: projectInfo 
+      message: projectInfo
         ? `RAB accepted and project "${projectInfo.name}" is now active`
         : "RAB quotation accepted",
       data: rab,
       project: projectInfo,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -529,15 +560,18 @@ const acceptRABQuotation = async (req, res) => {
 const rejectRABByPM = async (req, res) => {
   try {
     const { reason } = req.body;
-    
+
     const rab = await RAB.findById(req.params.id);
     if (!rab) {
       return res.status(404).json({ success: false, message: "RAB not found" });
     }
 
     // Hanya PM yang sudah di-assign atau admin yang bisa reject
-    if (req.user.role !== "admin" && 
-        (!rab.projectManagerId || rab.projectManagerId.toString() !== req.user._id.toString())) {
+    if (
+      req.user.role !== "admin" &&
+      (!rab.projectManagerId ||
+        rab.projectManagerId.toString() !== req.user._id.toString())
+    ) {
       return res.status(403).json({
         success: false,
         message: "Only assigned PM or admin can reject this RAB",
@@ -555,7 +589,9 @@ const rejectRABByPM = async (req, res) => {
     await ActivityLog.create({
       type: "rab_rejected_by_pm",
       title: "Permintaan RAB Ditolak PM",
-      description: `Project Manager ${req.user.name} menolak permintaan RAB "${rab.title}" dari ${rab.customerName}. Alasan: ${reason || "Tidak disebutkan"}`,
+      description: `Project Manager ${req.user.name} menolak permintaan RAB "${
+        rab.title
+      }" dari ${rab.customerName}. Alasan: ${reason || "Tidak disebutkan"}`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -568,13 +604,13 @@ const rejectRABByPM = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB rejected by PM",
       data: rab,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -582,7 +618,7 @@ const rejectRABByPM = async (req, res) => {
 const rejectRABQuotation = async (req, res) => {
   try {
     const { reason } = req.body;
-    
+
     const rab = await RAB.findById(req.params.id);
     if (!rab) {
       return res.status(404).json({ success: false, message: "RAB not found" });
@@ -606,7 +642,8 @@ const rejectRABQuotation = async (req, res) => {
     rab.status = "rejected";
     rab.respondedAt = new Date();
     if (reason) {
-      rab.customerNotes = (rab.customerNotes || "") + "\n\nRejection reason: " + reason;
+      rab.customerNotes =
+        (rab.customerNotes || "") + "\n\nRejection reason: " + reason;
     }
     await rab.save();
 
@@ -614,7 +651,9 @@ const rejectRABQuotation = async (req, res) => {
     await ActivityLog.create({
       type: "rab_rejected",
       title: "Penawaran RAB Ditolak",
-      description: `Customer ${req.user.name} menolak penawaran RAB "${rab.title}". Alasan: ${reason || "Tidak disebutkan"}`,
+      description: `Customer ${req.user.name} menolak penawaran RAB "${
+        rab.title
+      }". Alasan: ${reason || "Tidak disebutkan"}`,
       userId: req.user._id,
       userName: req.user.name,
       userRole: req.user.role,
@@ -626,13 +665,13 @@ const rejectRABQuotation = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB quotation rejected",
       data: rab,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -640,7 +679,7 @@ const rejectRABQuotation = async (req, res) => {
 const assignRABToPM = async (req, res) => {
   try {
     const { projectManagerId } = req.body;
-    
+
     if (!projectManagerId) {
       return res.status(400).json({
         success: false,
@@ -665,7 +704,7 @@ const assignRABToPM = async (req, res) => {
 
     rab.projectManagerId = projectManagerId;
     rab.projectManagerName = pm.name;
-    
+
     // Update status to reviewed if still pending
     if (rab.status === "pending") {
       rab.status = "reviewed";
@@ -691,14 +730,14 @@ const assignRABToPM = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB assigned to Project Manager successfully",
       data: rab,
     });
   } catch (error) {
     console.error("❌ assignRABToPM error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -706,7 +745,7 @@ const assignRABToPM = async (req, res) => {
 const updateRABStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    
+
     if (!status) {
       return res.status(400).json({
         success: false,
@@ -714,7 +753,13 @@ const updateRABStatus = async (req, res) => {
       });
     }
 
-    const validStatuses = ["pending", "reviewed", "quoted", "accepted", "rejected"];
+    const validStatuses = [
+      "pending",
+      "reviewed",
+      "quoted",
+      "accepted",
+      "rejected",
+    ];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -729,7 +774,7 @@ const updateRABStatus = async (req, res) => {
 
     const oldStatus = rab.status;
     rab.status = status;
-    
+
     if (status === "reviewed" && !rab.reviewedAt) {
       rab.reviewedAt = new Date();
     }
@@ -761,14 +806,14 @@ const updateRABStatus = async (req, res) => {
       },
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RAB status updated successfully",
       data: rab,
     });
   } catch (error) {
     console.error("❌ updateRABStatus error:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

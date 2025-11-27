@@ -17,9 +17,9 @@ const getProject = async (req, res) => {
       .populate("projectManagerId", "name email role")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ success: true, data: projects });
+    return res.status(200).json({ success: true, data: projects });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -36,9 +36,9 @@ const getProjectById = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Project not found" });
 
-    res.status(200).json({ success: true, data: project });
+    return res.status(200).json({ success: true, data: project });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -86,7 +86,11 @@ const createProject = async (req, res) => {
     await ActivityLog.create({
       type: "project_created",
       title: "Project Baru Dibuat",
-      description: `Project Manager ${manager.name} membuat project baru "${name}" di lokasi ${location}. Budget: Rp ${budget?.toLocaleString('id-ID') || 0}`,
+      description: `Project Manager ${
+        manager.name
+      } membuat project baru "${name}" di lokasi ${location}. Budget: Rp ${
+        budget?.toLocaleString("id-ID") || 0
+      }`,
       userId: projectManagerId,
       userName: manager.name,
       userRole: manager.role,
@@ -101,13 +105,13 @@ const createProject = async (req, res) => {
       },
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Project created successfully",
       data: project,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -129,13 +133,13 @@ const updateProject = async (req, res) => {
     Object.assign(project, req.body);
     await project.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Project updated successfully",
       data: project,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -148,11 +152,11 @@ const deleteProject = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Project not found" });
 
-    res
+    return res
       .status(200)
       .json({ success: true, message: "Project deleted successfully" });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -160,13 +164,20 @@ const deleteProject = async (req, res) => {
 const updateProjectProgress = async (req, res) => {
   try {
     const { progress, materialUsed, notes } = req.body;
-    
-    console.log("📊 Update Progress Request:", { projectId: req.params.id, progress, materialUsed, notes });
-    
+
+    console.log("📊 Update Progress Request:", {
+      projectId: req.params.id,
+      progress,
+      materialUsed,
+      notes,
+    });
+
     const project = await Project.findById(req.params.id);
     if (!project) {
       console.error("❌ Project not found:", req.params.id);
-      return res.status(404).json({ success: false, message: "Project not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Project not found" });
     }
 
     console.log("✅ Found project:", project.name);
@@ -183,7 +194,7 @@ const updateProjectProgress = async (req, res) => {
 
     // Add new history entry
     const historyEntry = {
-      progress: progress !== undefined ? progress : (project.progress || 0),
+      progress: progress !== undefined ? progress : project.progress || 0,
       materialUsed: materialUsed || "",
       notes: notes || "",
       updatedBy: req.user?._id,
@@ -203,7 +214,11 @@ const updateProjectProgress = async (req, res) => {
         await ActivityLog.create({
           type: "project_progress_updated",
           title: "Progress Proyek Diupdate",
-          description: `${req.user.name} mengupdate progress proyek "${project.name}" menjadi ${progress}%${materialUsed ? ` dan mencatat penggunaan material` : ''}`,
+          description: `${req.user.name} mengupdate progress proyek "${
+            project.name
+          }" menjadi ${progress}%${
+            materialUsed ? ` dan mencatat penggunaan material` : ""
+          }`,
           userId: req.user._id,
           userName: req.user.name,
           userRole: req.user.role,
@@ -223,14 +238,14 @@ const updateProjectProgress = async (req, res) => {
       }
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Project progress updated successfully",
       data: project,
     });
   } catch (error) {
     console.error("❌ Error updating project progress:", error);
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

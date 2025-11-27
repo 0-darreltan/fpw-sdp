@@ -4,7 +4,7 @@ const Project = require('./Project');
 const Order = require('./Order');
 const RAB = require("./RAB");
 const Cart = require("./Cart");
-const CheckOut = require("./CheckOut");
+const Checkout = require("./Checkout");
 const MaterialRequest = require("./MaterialRequest");
 const ActivityLog = require("./ActivityLog");
 
@@ -15,7 +15,7 @@ module.exports = {
   Order,
   RAB,
   Cart,
-  CheckOut,
+  Checkout,
   MaterialRequest,
   ActivityLog,
 };

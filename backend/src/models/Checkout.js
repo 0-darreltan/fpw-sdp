@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 // Item dengan snapshot data produk untuk menjaga integritas historis
 const CheckoutItemSchema = new Schema({
-  productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
+  productId: { type: Schema.Types.ObjectId, ref: "Product", required: false }, // Not required for RAB manual items
   productName: { type: String, required: true }, // Snapshot nama
   priceAtCheckout: { type: Number, required: true }, // Snapshot harga
   quantity: { type: Number, required: true },
@@ -13,7 +13,12 @@ const CheckoutItemSchema = new Schema({
 // Skema alamat yang terstruktur
 const AddressSchema = new Schema(
   {
+    houseNumber: { type: String },
     street: { type: String, required: true },
+    rt: { type: String },
+    rw: { type: String },
+    kelurahan: { type: String, required: true },
+    kecamatan: { type: String, required: true },
     city: { type: String, required: true },
     province: { type: String, required: true },
     postalCode: { type: String, required: true },
@@ -21,6 +26,28 @@ const AddressSchema = new Schema(
   },
   { _id: false }
 );
+
+// Method untuk format alamat lengkap
+AddressSchema.methods.getFullAddress = function () {
+  const parts = [];
+
+  if (this.houseNumber) parts.push(`No. ${this.houseNumber}`);
+  parts.push(this.street);
+
+  const rtRw = [];
+  if (this.rt) rtRw.push(`RT ${this.rt}`);
+  if (this.rw) rtRw.push(`RW ${this.rw}`);
+  if (rtRw.length > 0) parts.push(rtRw.join("/"));
+
+  if (this.kelurahan) parts.push(`Kel. ${this.kelurahan}`);
+  if (this.kecamatan) parts.push(`Kec. ${this.kecamatan}`);
+  parts.push(this.city);
+  parts.push(this.province);
+  if (this.postalCode) parts.push(this.postalCode);
+  parts.push(this.country);
+
+  return parts.join(", ");
+};
 
 const CheckoutSchema = new Schema(
   {
@@ -54,6 +81,11 @@ const CheckoutSchema = new Schema(
       type: String,
       enum: ["pending", "paid", "failed", "expired"],
       default: "pending",
+    },
+    // Optional storage for Midtrans/Snap transaction metadata
+    midtrans: {
+      token: { type: String },
+      transaction: { type: Schema.Types.Mixed },
     },
   },
   { timestamps: true }

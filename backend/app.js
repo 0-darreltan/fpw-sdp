@@ -55,6 +55,8 @@ const {
   materialRequestRouter,
   activityRouter,
   cartRouter,
+  checkoutRouter,
+  // shippingRouter,
 } = require("./src/routes");
 
 app.get("/", (req, res) => {
@@ -70,6 +72,9 @@ app.use("/api/webhooks", webhookRouter);
 app.use("/api/material-requests", materialRequestRouter);
 app.use("/api/activities", activityRouter);
 app.use("/api/cart", cartRouter);
+app.use("/api/checkout", checkoutRouter);
+// app.use("/api/shipping", shippingRouter);
+
 
 app.get("/", (req, res) => {
   res.send("FPW + SDP Backend is running!");
