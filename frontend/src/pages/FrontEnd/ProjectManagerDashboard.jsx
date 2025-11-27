@@ -637,7 +637,7 @@ const ProjectManagerDashboard = ({
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h4 className="font-medium text-yellow-900 mb-2">📋 Tugas PM:</h4>
+              <h4 className="font-medium text-yellow-900 mb-2">Tugas PM:</h4>
               <ul className="text-sm text-yellow-800 space-y-1 list-disc list-inside">
                 <li>Mereview permintaan pekerjaan pelanggan</li>
                 <li>Merekomendasikan material yang benar</li>

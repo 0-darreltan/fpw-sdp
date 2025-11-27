@@ -14,6 +14,32 @@
       src="https://app.sandbox.midtrans.com/snap/snap.js"
       data-client-key="Mid-client-y6y3cm5fdTJ8vFIE"
     ></script>
+    <style>
+      /* Custom Scrollbar Styling */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: #F3F4F6;
+        border-radius: 4px;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #9CA3AF;
+        border-radius: 4px;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #6B7280;
+      }
+      
+      /* Firefox */
+      .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: #9CA3AF #F3F4F6;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
