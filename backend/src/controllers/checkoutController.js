@@ -166,6 +166,9 @@ const initiatePayment = async (req, res) => {
         email: user.email,
         phone: user.phone, // Pastikan user punya field phone
       },
+      callbacks: {
+        finish: process.env.FRONTEND_URL || "http://localhost:5173/customer",
+      },
     };
 
     // 5. Buat transaksi Midtrans untuk mendapatkan token
