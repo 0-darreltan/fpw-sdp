@@ -11,13 +11,9 @@ const { generateOrderNumber } = require("../utils/orderUtils"); // Helper Anda
  */
 const initiatePayment = async (req, res) => {
   try {
-    const {
-      orderType,
-      rabId,
-      deliveryAddress,
-      shippingCost = 0,
-      discount = 0,
-    } = req.body;
+    const { orderType, rabId, deliveryAddress, shippingCost, discount } =
+      req.body;
+    console.log("Initiate Payment Request Body:", req.body);
     const userId = req.user.id; // Dari authMiddleware
 
     // Ambil detail user untuk Midtrans
@@ -47,6 +43,14 @@ const initiatePayment = async (req, res) => {
         quantity: item.quantity,
         unit: item.productId.unit,
       }));
+
+      checkoutItems.push({
+        productId: null,
+        productName: "Biaya Pengiriman",
+        priceAtCheckout: shippingCost,
+        quantity: 1,
+        unit: "service",
+      });
     } else if (orderType === "PROJECT") {
       if (!rabId)
         return res.status(400).json({
@@ -133,7 +137,7 @@ const initiatePayment = async (req, res) => {
       (sum, item) => sum + item.priceAtCheckout * item.quantity,
       0
     );
-    const total = subtotal + shippingCost - discount;
+    const total = subtotal - discount;
 
     // 3. Buat dokumen Checkout di database Anda
     const checkout = new Checkout({
@@ -313,8 +317,94 @@ const getCheckoutHistory = async (req, res) => {
   }
 };
 
+/**
+ * ✅ Update Checkout Status
+ * Update status pembayaran checkout dari frontend setelah callback Midtrans
+ */
+const updateCheckoutStatus = async (req, res) => {
+  try {
+    const { checkoutId } = req.params;
+    const { status, transactionId } = req.body;
+    const userId = req.user.id;
+
+    // Validasi status yang diperbolehkan
+    const allowedStatuses = ["pending", "paid", "failed", "expired"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${allowedStatuses.join(", ")}`,
+      });
+    }
+
+    // Cari checkout milik user
+    const checkout = await Checkout.findOne({
+      _id: checkoutId,
+      user: userId,
+    });
+
+    if (!checkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Checkout not found or unauthorized.",
+      });
+    }
+
+    // Jika status sudah paid, jangan update lagi (prevent double processing)
+    if (checkout.paymentStatus === "paid" && status !== "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update paid checkout to other status.",
+      });
+    }
+
+    // Update status
+    checkout.paymentStatus = status;
+    if (transactionId) {
+      checkout.midtrans = {
+        ...checkout.midtrans,
+        transactionId,
+      };
+    }
+    await checkout.save();
+
+    // Jika status = paid, buat order (sama seperti webhook)
+    if (status === "paid" && checkout.paymentStatus === "paid") {
+      // Check jika order sudah ada
+      const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+
+      if (!existingOrder) {
+        const order = new Order({
+          orderNumber: generateOrderNumber(checkout.orderType),
+          checkoutId: checkout._id,
+          customerId: checkout.user,
+          orderType: checkout.orderType,
+          rabId: checkout.rabId,
+          totalAmount: checkout.total,
+          status: "payment_confirmed",
+        });
+        await order.save();
+
+        // Kosongkan cart jika MATERIAL_PURCHASE
+        if (checkout.orderType === "MATERIAL_PURCHASE") {
+          await Cart.findOneAndUpdate({ user: checkout.user }, { items: [] });
+        }
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Checkout status updated successfully.",
+      data: checkout,
+    });
+  } catch (error) {
+    console.error("Update Checkout Status Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   initiatePayment,
   handleMidtransNotification,
   getCheckoutHistory,
+  updateCheckoutStatus,
 };

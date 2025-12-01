@@ -17,7 +17,7 @@ const AddressSchema = new Schema(
     street: { type: String, required: true },
     rt: { type: String },
     rw: { type: String },
-    kelurahan: { type: String, required: true },
+    kelurahan: { type: String },
     kecamatan: { type: String, required: true },
     city: { type: String, required: true },
     province: { type: String, required: true },

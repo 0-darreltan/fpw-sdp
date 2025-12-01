@@ -1,3 +1,5 @@
+const { Order } = require("../models");
+
 async function generateOrderNumber(orderType) {
   // 1. Tentukan prefix berdasarkan tipe order
   const prefix = orderType === "PROJECT" ? "PROJ" : "INV";

@@ -1,15 +1,17 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { actionCart } from "../../features/cart/cartSlice";
 import { actionPurchaseCart } from "../../features/purchaseCart/purchaseCartSlice";
-import { initiateCheckout } from "../../features/checkout/checkoutSlice";
-// SHIPPING DISABLED
-// import {
-//   calculateShippingCost,
-//   setSelectedShipping,
-//   clearShippingOptions,
-// } from "../../features/shipping/shippingSlice";
+import {
+  initiateCheckout,
+  updateCheckoutStatus,
+} from "../../features/checkout/checkoutSlice";
+import {
+  calculateShippingCost,
+  setSelectedShipping,
+  clearShippingOptions,
+} from "../../features/shipping/shippingSlice";
 import { useState } from "react";
 
 const formatCurrency = (value) => {
@@ -25,6 +27,9 @@ const CheckoutPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const url = import.meta.env.VITE_BACKEND_URL;
+
+  console.log(url);
 
   const { items: cartItems = [], loading } = useSelector(
     (state) => state.cart || {}
@@ -33,13 +38,13 @@ const CheckoutPage = () => {
     (state) => state.purchaseCart?.items || []
   );
 
-  // Shipping state dari Redux - DISABLED
-  // const {
-  //   shippingOptions = [],
-  //   selectedShipping,
-  //   loading: shippingLoading,
-  //   error: shippingError,
-  // } = useSelector((state) => state.shipping || {});
+  // Shipping state dari Redux
+  const {
+    shippingOptions = [],
+    selectedShipping,
+    loading: shippingLoading,
+    error: shippingError,
+  } = useSelector((state) => state.shipping || {});
 
   // source: 'cart' | 'purchase'
   // Cek URL parameter, jika ada ?source=purchase maka set ke 'purchase'
@@ -53,9 +58,6 @@ const CheckoutPage = () => {
   const [customAddress, setCustomAddress] = useState({
     houseNumber: "",
     street: "",
-    rt: "",
-    rw: "",
-    kelurahan: "",
     kecamatan: "",
     city: "",
     province: "",
@@ -71,6 +73,7 @@ const CheckoutPage = () => {
   const [addressSuggestions, setAddressSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestionRef = useRef(null);
 
   const selectedItems = source === "cart" ? cartItems : purchaseCartItems;
 
@@ -80,6 +83,7 @@ const CheckoutPage = () => {
   }, [dispatch]);
 
   // Fungsi untuk mendapatkan lokasi saat ini
+  // Replace existing getCurrentLocation with this version
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation tidak didukung oleh browser Anda.");
@@ -92,30 +96,27 @@ const CheckoutPage = () => {
         const { latitude, longitude } = position.coords;
 
         try {
-          // Reverse geocoding menggunakan Nominatim (OpenStreetMap)
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+          // Call backend proxy for reverse geocoding
+          const resp = await fetch(
+            `${url}/geocode/reverse?lat=${latitude}&lon=${longitude}`
           );
-          const data = await response.json();
+          const data = await resp.json();
+
+          const addrObj = data.address || {};
 
           const address = {
-            houseNumber: data.address.house_number || "",
+            houseNumber: addrObj.house_number || "",
             street:
-              data.address.road ||
-              data.address.hamlet ||
+              addrObj.road ||
+              addrObj.hamlet ||
+              addrObj.neighbourhood ||
               "Jalan tidak diketahui",
-            rt: "",
-            rw: "",
-            kelurahan: data.address.village || data.address.suburb || "",
-            kecamatan: data.address.suburb || data.address.city_district || "",
-            city:
-              data.address.city ||
-              data.address.town ||
-              data.address.county ||
-              "",
-            province: data.address.state || "",
-            postalCode: data.address.postcode || "",
-            country: "Indonesia",
+            kecamatan:
+              addrObj.suburb || addrObj.city_district || addrObj.county || "",
+            city: addrObj.city || addrObj.town || addrObj.county || "",
+            province: addrObj.state || "",
+            postalCode: addrObj.postcode || "",
+            country: addrObj.country || "Indonesia",
           };
 
           setCurrentLocation(address);
@@ -171,36 +172,66 @@ const CheckoutPage = () => {
     }
 
     setLoadingSuggestions(true);
+
+    console.log("Searching address for query:", query); // Debug
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          query + ", Indonesia"
-        )}&addressdetails=1&limit=5`
-      );
+      // 🔍 Query backend yang meneruskan ke Nominatim
+      const response = await fetch(`${url}/geocode/search?q=${query}`);
       const data = await response.json();
 
-      setAddressSuggestions(
-        data.map((item) => ({
-          display_name: item.display_name,
+      console.log("Geocoding API response:", data); // Debug
+
+      const suggestions = (data || []).map((item) => {
+        const addr = item.address || {};
+
+        // Mapping untuk struktur alamat Indonesia
+        // Kelurahan/Desa: village > suburb > neighbourhood
+        const kelurahan =
+          addr.village || addr.suburb || addr.neighbourhood || "";
+
+        // Kecamatan: city_district > municipality > county
+        const kecamatan =
+          addr.city_district || addr.municipality || addr.county || "";
+
+        // Kota/Kabupaten: city > town > county (jika belum dipakai untuk kecamatan)
+        const city =
+          addr.city ||
+          addr.town ||
+          (addr.county && !addr.city_district ? addr.county : "") ||
+          addr.municipality ||
+          "";
+
+        // Buat label suggestion yang lebih pendek dan relevan
+        const parts = [
+          addr.road,
+          kelurahan,
+          kecamatan,
+          city,
+          addr.state,
+        ].filter(Boolean);
+
+        const shortLabel = parts.join(", ");
+
+        return {
+          display_name: shortLabel || item.display_name, // fallback bila minim data
+          full_display_name: item.display_name, // simpan juga versi panjang
           address: {
-            houseNumber: item.address.house_number || "",
-            street: item.address.road || item.address.hamlet || "",
-            rt: "",
-            rw: "",
-            kelurahan: item.address.village || item.address.suburb || "",
-            kecamatan: item.address.suburb || item.address.city_district || "",
-            city:
-              item.address.city ||
-              item.address.town ||
-              item.address.county ||
-              "",
-            province: item.address.state || "",
-            postalCode: item.address.postcode || "",
-            country: "Indonesia",
+            houseNumber: addr.house_number || "",
+            street: addr.road || addr.pedestrian || "",
+            kecamatan: kecamatan,
+            city: city,
+            province: addr.state || "",
+            postalCode: addr.postcode || "",
+            country: addr.country || "Indonesia",
           },
-        }))
-      );
-      setShowSuggestions(true);
+        };
+      });
+
+      console.log("Processed suggestions:", suggestions); // Debug
+      setAddressSuggestions(suggestions);
+      if (suggestions.length > 0) {
+        setShowSuggestions(true);
+      }
     } catch (error) {
       console.error("Error searching address:", error);
       setAddressSuggestions([]);
@@ -212,13 +243,33 @@ const CheckoutPage = () => {
   // Debounce search alamat
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (addressQuery) {
+      if (addressQuery.trim().length >= 3) {
         searchAddress(addressQuery);
+      } else {
+        setAddressSuggestions([]);
+        setShowSuggestions(false);
       }
     }, 500);
 
     return () => clearTimeout(timer);
   }, [addressQuery]);
+
+  // Handle click outside untuk menutup dropdown suggestions
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionRef.current &&
+        !suggestionRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Auto-fetch lokasi saat user pilih "Lokasi Saat Ini"
   useEffect(() => {
@@ -228,42 +279,65 @@ const CheckoutPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressType]);
 
-  // Auto-calculate shipping saat alamat berubah - DISABLED
-  // useEffect(() => {
-  //   if (source !== "cart" || selectedItems.length === 0) {
-  //     dispatch(clearShippingOptions());
-  //     return;
-  //   }
+  // Auto-calculate shipping saat alamat berubah
+  useEffect(() => {
+    if (source !== "cart" || selectedItems.length === 0) {
+      dispatch(clearShippingOptions());
+      return;
+    }
+    // Tentukan provinceName dari alamat
+    let provinceName = "";
+    if (addressType === "current" && currentLocation?.province) {
+      provinceName = currentLocation.province;
+    } else if (addressType === "custom" && customAddress.province) {
+      provinceName = customAddress.province;
+    }
 
-  //   let cityName = "";
-  //   if (addressType === "current" && currentLocation?.city) {
-  //     cityName = currentLocation.city;
-  //   } else if (addressType === "custom" && customAddress.city) {
-  //     cityName = customAddress.city;
-  //   }
+    let cityName = "";
+    if (addressType === "current" && currentLocation?.city) {
+      cityName = currentLocation.city;
+    } else if (addressType === "custom" && customAddress.city) {
+      cityName = customAddress.city;
+    }
 
-  //   if (!cityName) {
-  //     dispatch(clearShippingOptions());
-  //     return;
-  //   }
+    let districtName = "";
+    if (addressType === "current" && currentLocation?.kecamatan) {
+      districtName = currentLocation.kecamatan;
+    } else if (addressType === "custom" && customAddress.district) {
+      districtName = customAddress.district;
+    }
 
-  //   // Hitung total berat (asumsi setiap item = 1000 gram)
-  //   // Anda bisa menambahkan field weight di product model
-  //   const totalWeight = selectedItems.reduce(
-  //     (total, item) => total + (item.quantity || 0) * 1000,
-  //     0
-  //   );
+    if (!cityName) {
+      dispatch(clearShippingOptions());
+      return;
+    }
 
-  //   // Panggil API untuk menghitung biaya pengiriman
-  //   dispatch(calculateShippingCost({ cityName, weight: totalWeight }));
-  // }, [
-  //   source,
-  //   addressType,
-  //   currentLocation,
-  //   customAddress.city,
-  //   selectedItems,
-  //   dispatch,
-  // ]);
+    // Hitung total berat (asumsi setiap item = 1000 gram)
+    // Anda bisa menambahkan field weight di product model
+    const totalWeight = selectedItems.reduce(
+      (total, item) => total + (item.quantity || 0) * 1000,
+      0
+    );
+
+    // Panggil API untuk menghitung biaya pengiriman
+    dispatch(
+      calculateShippingCost({
+        provinceName,
+        cityName,
+        districtName,
+        weight: totalWeight,
+      })
+    );
+  }, [
+    source,
+    addressType,
+    currentLocation,
+    customAddress.province,
+    customAddress.city,
+    customAddress.district,
+    selectedItems,
+    dispatch,
+  ]);
 
   const handleIncrease = (item) => {
     if (source === "cart") {
@@ -328,8 +402,7 @@ const CheckoutPage = () => {
     0
   );
 
-  // SHIPPING DISABLED - Set to 0
-  const shippingCost = 0; // selectedShipping?.cost || 0;
+  const shippingCost = selectedShipping?.cost || 0;
   const totalAmount = subtotal + shippingCost;
 
   const handlePay = () => {
@@ -350,7 +423,6 @@ const CheckoutPage = () => {
     } else if (addressType === "custom") {
       if (
         !customAddress.street ||
-        !customAddress.kelurahan ||
         !customAddress.kecamatan ||
         !customAddress.city ||
         !customAddress.province
@@ -367,21 +439,22 @@ const CheckoutPage = () => {
       deliveryAddress = customAddress;
     }
 
-    // Validasi khusus untuk MATERIAL_PURCHASE - SHIPPING DISABLED
-    // if (source === "cart") {
-    //   // Validasi shipping option harus dipilih untuk pembelian material
-    //   if (!selectedShipping) {
-    //     alert("Mohon pilih metode pengiriman terlebih dahulu.");
-    //     return;
-    //   }
-    // }
+    // Validasi khusus untuk MATERIAL_PURCHASE
+    if (source === "cart") {
+      // Validasi shipping option harus dipilih untuk pembelian material
+      if (!selectedShipping) {
+        alert("Mohon pilih metode pengiriman terlebih dahulu.");
+        return;
+      }
+    }
 
     // Prepare payload expected by backend
     const payload = {
       orderType: source === "cart" ? "MATERIAL_PURCHASE" : "PROJECT",
       rabId: null,
       deliveryAddress: deliveryAddress,
-      shippingCost: source === "cart" ? shippingCost : 0,
+      shippingCost:
+        source === "cart" ? shippingCost : selectedShipping?.cost || 0,
       discount: 0,
     };
 
@@ -414,6 +487,15 @@ const CheckoutPage = () => {
               console.log("Success:", result);
               alert("Pembayaran sukses!");
 
+              // Update checkout status di database
+              dispatch(
+                updateCheckoutStatus({
+                  checkoutId: data.checkoutId,
+                  status: "paid",
+                  transactionId: result.transaction_id,
+                })
+              );
+
               // Kosongkan keranjang setelah pembayaran berhasil
               if (source === "cart") {
                 dispatch(actionCart.clearCart());
@@ -430,6 +512,15 @@ const CheckoutPage = () => {
               console.log("Pending:", result);
               alert("Menunggu pembayaran...");
 
+              // Update checkout status di database
+              dispatch(
+                updateCheckoutStatus({
+                  checkoutId: data.checkoutId,
+                  status: "pending",
+                  transactionId: result.transaction_id,
+                })
+              );
+
               // Redirect ke dashboard
               setTimeout(() => {
                 navigate("/customer");
@@ -438,6 +529,15 @@ const CheckoutPage = () => {
             onError: function (result) {
               console.log("Error:", result);
               alert("Terjadi kesalahan pembayaran");
+
+              // Update checkout status di database
+              dispatch(
+                updateCheckoutStatus({
+                  checkoutId: data.checkoutId,
+                  status: "failed",
+                  transactionId: result.transaction_id,
+                })
+              );
 
               // Redirect ke dashboard
               setTimeout(() => {
@@ -682,16 +782,25 @@ const CheckoutPage = () => {
                       <p className="text-xs text-gray-500 mb-2">
                         * Wajib diisi
                       </p>
-                      <div className="relative">
+                      <div className="relative" ref={suggestionRef}>
                         <input
                           type="text"
                           placeholder="Cari alamat (min. 3 karakter)..."
                           value={addressQuery}
                           onChange={(e) => {
                             setAddressQuery(e.target.value);
-                            setShowSuggestions(true);
+                            if (e.target.value.length >= 3) {
+                              setShowSuggestions(true);
+                            }
                           }}
-                          onFocus={() => setShowSuggestions(true)}
+                          onFocus={() => {
+                            if (
+                              addressQuery.length >= 3 &&
+                              addressSuggestions.length > 0
+                            ) {
+                              setShowSuggestions(true);
+                            }
+                          }}
                           className="w-full text-sm border rounded px-2 py-1"
                         />
                         {loadingSuggestions && (
@@ -700,9 +809,16 @@ const CheckoutPage = () => {
                           </div>
                         )}
 
+                        {/* Debug info */}
+                        {addressQuery.length >= 3 && !loadingSuggestions && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {addressSuggestions.length} hasil ditemukan
+                          </p>
+                        )}
+
                         {/* Dropdown suggestions */}
                         {showSuggestions && addressSuggestions.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                          <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                             {addressSuggestions.map((suggestion, idx) => (
                               <button
                                 key={idx}
@@ -726,19 +842,6 @@ const CheckoutPage = () => {
                           </div>
                         )}
                       </div>
-
-                      <input
-                        type="text"
-                        placeholder="Nomor Rumah / Blok"
-                        value={customAddress.houseNumber}
-                        onChange={(e) =>
-                          setCustomAddress({
-                            ...customAddress,
-                            houseNumber: e.target.value,
-                          })
-                        }
-                        className="w-full text-sm border rounded px-2 py-1"
-                      />
                       <input
                         type="text"
                         placeholder="Jalan / Gang *"
@@ -752,32 +855,6 @@ const CheckoutPage = () => {
                         className="w-full text-sm border rounded px-2 py-1"
                         required
                       />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="RT"
-                          value={customAddress.rt}
-                          onChange={(e) =>
-                            setCustomAddress({
-                              ...customAddress,
-                              rt: e.target.value,
-                            })
-                          }
-                          className="w-full text-sm border rounded px-2 py-1"
-                        />
-                        <input
-                          type="text"
-                          placeholder="RW"
-                          value={customAddress.rw}
-                          onChange={(e) =>
-                            setCustomAddress({
-                              ...customAddress,
-                              rw: e.target.value,
-                            })
-                          }
-                          className="w-full text-sm border rounded px-2 py-1"
-                        />
-                      </div>
                       <input
                         type="text"
                         placeholder="Kelurahan / Desa *"
@@ -860,77 +937,81 @@ const CheckoutPage = () => {
               </div>
             )}
 
-            {/* Opsi Pengiriman - DISABLED */}
-            {/* {source === "cart" && (
-            <div className="mt-4 border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">
-                🚚 Metode Pengiriman
-              </h4>
+            {/* Opsi Pengiriman */}
+            {source === "cart" && (
+              <div className="mt-4 border-t pt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  🚚 Metode Pengiriman
+                </h4>
 
-              {shippingLoading && (
-                <div className="text-sm text-blue-600">
-                  Menghitung biaya pengiriman...
-                </div>
-              )}
-
-              {shippingError && (
-                <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                  {shippingError}
-                </div>
-              )}
-
-              {!shippingLoading &&
-                !shippingError &&
-                shippingOptions.length === 0 && (
-                  <div className="text-sm text-gray-500 italic">
-                    Pilih alamat untuk melihat opsi pengiriman
+                {shippingLoading && (
+                  <div className="text-sm text-blue-600">
+                    Menghitung biaya pengiriman...
                   </div>
                 )}
 
-              {shippingOptions.length > 0 && (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {shippingOptions.map((option, idx) => (
-                    <label
-                      key={idx}
-                      className={`flex items-start gap-2 p-3 border rounded cursor-pointer hover:bg-blue-50 transition ${
-                        selectedShipping?.service === option.service &&
-                        selectedShipping?.courier === option.courier
-                          ? "bg-blue-100 border-blue-500"
-                          : "border-gray-200"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shipping"
-                        checked={
+                {shippingError && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {shippingError}
+                  </div>
+                )}
+
+                {!shippingLoading &&
+                  !shippingError &&
+                  shippingOptions.length === 0 && (
+                    <div className="text-sm text-gray-500 italic">
+                      Pilih alamat untuk melihat opsi pengiriman
+                    </div>
+                  )}
+
+                {shippingOptions.length > 0 && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {shippingOptions.map((option, idx) => (
+                      <label
+                        key={idx}
+                        className={`flex items-start gap-2 p-3 border rounded cursor-pointer hover:bg-blue-50 transition ${
                           selectedShipping?.service === option.service &&
-                          selectedShipping?.courier === option.courier
-                        }
-                        onChange={() => dispatch(setSelectedShipping(option))}
-                        className="mt-1"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm text-gray-800">
-                            {option.courier.toUpperCase()} - {option.service}
-                          </span>
-                          <span className="font-semibold text-sm text-blue-600">
-                            {formatCurrency(option.cost)}
-                          </span>
+                          selectedShipping?.code === option.code
+                            ? "bg-blue-100 border-blue-500"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="shipping"
+                          checked={
+                            selectedShipping?.service === option.service &&
+                            selectedShipping?.code === option.code
+                          }
+                          onChange={() => dispatch(setSelectedShipping(option))}
+                          className="mt-1"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm text-gray-800">
+                              {option.name || option.code} - {option.service}
+                            </span>
+
+                            <span className="font-semibold text-sm text-blue-600">
+                              {formatCurrency(option.cost)}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-gray-500 mt-1">
+                            {option.description}
+                          </p>
+
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Estimasi: {option.etd}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {option.description}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Estimasi: {option.etd}
-                        </p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )} */}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="mt-4 border-t pt-4">
               <div className="flex justify-between text-gray-600">
@@ -947,15 +1028,15 @@ const CheckoutPage = () => {
                 </span>
               </div>
 
-              {/* Tampilkan biaya pengiriman untuk material purchase - DISABLED */}
-              {/* {source === "cart" && selectedShipping && (
-              <div className="flex justify-between mt-2 text-gray-600">
-                <span>Biaya Pengiriman</span>
-                <span className="font-semibold">
-                  {formatCurrency(shippingCost)}
-                </span>
-              </div>
-            )} */}
+              {/* Tampilkan biaya pengiriman untuk material purchase */}
+              {source === "cart" && selectedShipping && (
+                <div className="flex justify-between mt-2 text-gray-600">
+                  <span>Biaya Pengiriman</span>
+                  <span className="font-semibold">
+                    {formatCurrency(shippingCost)}
+                  </span>
+                </div>
+              )}
 
               {/* Total */}
               <div className="flex justify-between mt-3 pt-3 border-t text-lg font-bold text-gray-800">

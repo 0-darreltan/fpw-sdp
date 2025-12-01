@@ -33,7 +33,7 @@ npm run dev
 ### Backend (`checkoutController.js`)
 ```javascript
 callbacks: {
-  finish: process.env.FRONTEND_URL || "http://localhost:5173/customer/dashboard",
+  finish: process.env.FRONTEND_URL || "http://localhost:5173/customer",
 }
 ```
 

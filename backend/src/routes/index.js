@@ -8,7 +8,8 @@ const materialRequestRouter = require("./materialRequestRoute");
 const activityRouter = require("./activityRoute");
 const cartRouter = require("./cartRoute");
 const checkoutRouter = require("./checkoutRoute");
-// const shippingRouter = require("./shippingRoute");
+const geoRouter = require("./geocode");
+const shippingRouter = require("./shippingRoute");
 
 module.exports = {
   userRouter,
@@ -21,5 +22,6 @@ module.exports = {
   checkoutRouter,
   activityRouter,
   cartRouter,
-  // shippingRouter,
+  geoRouter,
+  shippingRouter,
 };

@@ -56,7 +56,8 @@ const {
   activityRouter,
   cartRouter,
   checkoutRouter,
-  // shippingRouter,
+  geoRouter,
+  shippingRouter,
 } = require("./src/routes");
 
 app.get("/", (req, res) => {
@@ -73,7 +74,8 @@ app.use("/api/material-requests", materialRequestRouter);
 app.use("/api/activities", activityRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/checkout", checkoutRouter);
-// app.use("/api/shipping", shippingRouter);
+app.use("/api/geocode", geoRouter);
+app.use("/api/shipping", shippingRouter);
 
 
 app.get("/", (req, res) => {

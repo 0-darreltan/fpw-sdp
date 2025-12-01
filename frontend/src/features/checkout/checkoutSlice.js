@@ -33,6 +33,24 @@ export const fetchCheckoutHistory = createAsyncThunk(
   }
 );
 
+// Async thunk to update checkout status
+export const updateCheckoutStatus = createAsyncThunk(
+  "checkout/updateStatus",
+  async ({ checkoutId, status, transactionId }, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`/checkout/status/${checkoutId}`, {
+        status,
+        transactionId,
+      });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data || { message: err.message || "Network error" }
+      );
+    }
+  }
+);
+
 const initialState = {
   loading: false,
   error: null,
@@ -40,6 +58,8 @@ const initialState = {
   history: [],
   historyLoading: false,
   historyError: null,
+  updateLoading: false,
+  updateError: null,
 };
 
 const checkoutSlice = createSlice({
@@ -79,6 +99,26 @@ const checkoutSlice = createSlice({
       .addCase(fetchCheckoutHistory.rejected, (state, action) => {
         state.historyLoading = false;
         state.historyError = action.payload?.message || action.error?.message || "Failed to fetch history";
+      })
+      // updateCheckoutStatus
+      .addCase(updateCheckoutStatus.pending, (state) => {
+        state.updateLoading = true;
+        state.updateError = null;
+      })
+      .addCase(updateCheckoutStatus.fulfilled, (state, action) => {
+        state.updateLoading = false;
+        // Update checkout in history if exists
+        const updatedCheckout = action.payload?.data;
+        if (updatedCheckout) {
+          const index = state.history.findIndex(c => c._id === updatedCheckout._id);
+          if (index !== -1) {
+            state.history[index] = updatedCheckout;
+          }
+        }
+      })
+      .addCase(updateCheckoutStatus.rejected, (state, action) => {
+        state.updateLoading = false;
+        state.updateError = action.payload?.message || action.error?.message || "Failed to update status";
       });
   },
 });
