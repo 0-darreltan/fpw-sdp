@@ -7,7 +7,6 @@ import ProductManagement from "../../components/admin/ProductManagement";
 import MaterialManagement from "../../components/admin/MaterialManagement";
 import OrderManagement from "../../components/admin/OrderManagement";
 import MaterialRequestManagement from "../../components/admin/MaterialRequestManagement";
-import RABRequestManagement from "../../components/admin/RABRequestManagement";
 
 const AdminDashboard = ({ data }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -62,9 +61,6 @@ const AdminDashboard = ({ data }) => {
 
       case "material-requests":
         return <MaterialRequestManagement />;
-
-      case "rab-requests":
-        return <RABRequestManagement />;
 
       default:
         return (
@@ -252,21 +248,6 @@ const AdminDashboard = ({ data }) => {
               >
                 <span className="text-2xl mr-3"></span>
                 <span>Permintaan Material</span>
-              </button>
-            </li>
-
-            {/* Permintaan RAB Customer */}
-            <li>
-              <button
-                onClick={() => handleTabChange("rab-requests")}
-                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
-                  activeTab === "rab-requests"
-                    ? "bg-gray-700 text-white"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <span className="text-2xl mr-3"></span>
-                <span>Permintaan RAB Customer</span>
               </button>
             </li>
           </ul>
