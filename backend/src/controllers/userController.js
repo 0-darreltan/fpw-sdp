@@ -275,6 +275,196 @@ const LogOutUser = (req, res) => {
   return res.status(200).json({ message: "User logged out successfully" });
 };
 
+// ✅ Get User Activity Report
+const getUserActivityReport = async (req, res) => {
+  try {
+    const { startDate, endDate, role } = req.query;
+
+    // Build query
+    const query = {};
+    if (role) query.role = role;
+
+    // Fetch all users
+    const users = await User.find(query).select("-password").sort({ createdAt: -1 });
+
+    // Date filter for createdAt
+    let filteredUsers = users;
+    if (startDate || endDate) {
+      filteredUsers = users.filter((user) => {
+        const userDate = new Date(user.createdAt);
+        if (startDate && userDate < new Date(startDate)) return false;
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (userDate > end) return false;
+        }
+        return true;
+      });
+    }
+
+    // Import ActivityLog model
+    const { ActivityLog } = require("../models");
+
+    // Build activity log query
+    const activityQuery = {};
+    if (startDate || endDate) {
+      activityQuery.timestamp = {};
+      if (startDate) activityQuery.timestamp.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        activityQuery.timestamp.$lte = end;
+      }
+    }
+
+    // Fetch activity logs
+    const activityLogs = await ActivityLog.find(activityQuery)
+      .populate("userId", "name email role username")
+      .sort({ timestamp: -1 });
+
+    // Aggregate user statistics
+    const userStats = {};
+    const roleStats = {};
+    const activityByDate = {};
+
+    filteredUsers.forEach((user) => {
+      const userId = user._id.toString();
+      userStats[userId] = {
+        userId,
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        registeredAt: user.createdAt,
+        lastActive: null,
+        activityCount: 0,
+        actions: {
+          CREATE: 0,
+          UPDATE: 0,
+          DELETE: 0,
+          VIEW: 0,
+          LOGIN: 0,
+        },
+      };
+
+      // Role statistics
+      if (!roleStats[user.role]) {
+        roleStats[user.role] = {
+          role: user.role,
+          userCount: 0,
+          activeUsers: 0,
+          totalActivities: 0,
+        };
+      }
+      roleStats[user.role].userCount++;
+    });
+
+    // Process activity logs
+    activityLogs.forEach((log) => {
+      if (!log.userId) return;
+
+      const userId = log.userId._id.toString();
+      const dateKey = new Date(log.timestamp).toISOString().split("T")[0];
+      const action = log.action || "VIEW";
+
+      // Update user stats
+      if (userStats[userId]) {
+        userStats[userId].activityCount++;
+        if (!userStats[userId].lastActive || log.timestamp > userStats[userId].lastActive) {
+          userStats[userId].lastActive = log.timestamp;
+        }
+        if (userStats[userId].actions[action] !== undefined) {
+          userStats[userId].actions[action]++;
+        }
+
+        // Update role stats
+        const userRole = userStats[userId].role;
+        if (roleStats[userRole]) {
+          roleStats[userRole].totalActivities++;
+        }
+      }
+
+      // Activity by date
+      if (!activityByDate[dateKey]) {
+        activityByDate[dateKey] = {
+          date: dateKey,
+          totalActivities: 0,
+          uniqueUsers: new Set(),
+          actions: {
+            CREATE: 0,
+            UPDATE: 0,
+            DELETE: 0,
+            VIEW: 0,
+            LOGIN: 0,
+          },
+        };
+      }
+      activityByDate[dateKey].totalActivities++;
+      activityByDate[dateKey].uniqueUsers.add(userId);
+      if (activityByDate[dateKey].actions[action] !== undefined) {
+        activityByDate[dateKey].actions[action]++;
+      }
+    });
+
+    // Count active users per role
+    Object.values(userStats).forEach((user) => {
+      if (user.activityCount > 0 && roleStats[user.role]) {
+        roleStats[user.role].activeUsers++;
+      }
+    });
+
+    // Convert to arrays and sort
+    const userList = Object.values(userStats).sort((a, b) => b.activityCount - a.activityCount);
+    const roleList = Object.values(roleStats);
+    const activityTimeline = Object.values(activityByDate)
+      .map((day) => ({
+        ...day,
+        uniqueUsers: day.uniqueUsers.size,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Calculate statistics
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const activeUsers30d = userList.filter(
+      (u) => u.lastActive && new Date(u.lastActive) >= thirtyDaysAgo
+    ).length;
+    const activeUsers7d = userList.filter(
+      (u) => u.lastActive && new Date(u.lastActive) >= sevenDaysAgo
+    ).length;
+    const newUsers30d = filteredUsers.filter(
+      (u) => new Date(u.createdAt) >= thirtyDaysAgo
+    ).length;
+
+    const stats = {
+      totalUsers: filteredUsers.length,
+      activeUsers30d,
+      activeUsers7d,
+      inactiveUsers: filteredUsers.length - activeUsers30d,
+      newUsers30d,
+      totalActivities: activityLogs.length,
+      averageActivitiesPerUser:
+        filteredUsers.length > 0 ? activityLogs.length / filteredUsers.length : 0,
+      mostActiveUser: userList[0] || null,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        stats,
+        users: userList,
+        roleDistribution: roleList,
+        activityTimeline,
+        recentActivities: activityLogs.slice(0, 50),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getUser,
   getUserById,
@@ -284,4 +474,5 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  getUserActivityReport,
 };

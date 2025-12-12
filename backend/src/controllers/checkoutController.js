@@ -153,6 +153,18 @@ const initiatePayment = async (req, res) => {
     });
     await checkout.save();
 
+    // 3.5 Buat Order langsung setelah checkout dibuat (status: pending)
+    const order = new Order({
+      orderNumber: await generateOrderNumber(orderType),
+      checkoutId: checkout._id,
+      customerId: userId,
+      orderType: orderType,
+      rabId: rabId || null,
+      totalAmount: total,
+      status: "payment_confirmed", // Status awal saat order dibuat
+    });
+    await order.save();
+
     // 4. Buat parameter untuk transaksi Midtrans
     const parameter = {
       transaction_details: {
@@ -198,6 +210,8 @@ const initiatePayment = async (req, res) => {
         data: {
           token: transaction.token,
           checkoutId: checkout._id,
+          orderId: order._id,
+          orderNumber: order.orderNumber,
         },
       });
     } catch (snapErr) {
@@ -255,28 +269,44 @@ const handleMidtransNotification = async (req, res) => {
     // Logika untuk menangani status pembayaran
     if (transactionStatus == "capture" || transactionStatus == "settlement") {
       if (fraudStatus == "accept") {
-        // ---- INI ADALAH LOGIKA 'confirmPaymentAndCreateOrder' ANDA ----
         // 1. Update status checkout
         checkout.paymentStatus = "paid";
         await checkout.save();
 
-        // 2. Buat Order baru
-        const order = new Order({
-          orderNumber: generateOrderNumber(checkout.orderType),
-          checkoutId: checkout._id,
-          customerId: checkout.user,
-          orderType: checkout.orderType,
-          rabId: checkout.rabId,
-          totalAmount: checkout.total,
-          status: "payment_confirmed",
-        });
-        await order.save();
+        // 2. Update Order yang sudah ada (jangan buat baru)
+        const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+        if (existingOrder) {
+          existingOrder.status = "payment_confirmed";
+          await existingOrder.save();
+        } else {
+          // Fallback: jika order belum ada (seharusnya tidak terjadi)
+          const order = new Order({
+            orderNumber: Number(checkout.orderType),
+            checkoutId: checkout._id,
+            customerId: checkout.user,
+            orderType: checkout.orderType,
+            rabId: checkout.rabId,
+            totalAmount: checkout.total,
+            status: "payment_confirmed",
+          });
+          await order.save();
+        }
 
         // 3. Jika dari keranjang, kosongkan
         if (checkout.orderType === "MATERIAL_PURCHASE") {
           await Cart.findOneAndUpdate({ user: checkout.user }, { items: [] });
         }
-        // ---- AKHIR LOGIKA PEMBUATAN ORDER ----
+      }
+    } else if (transactionStatus == "pending") {
+      // Handle pending payment
+      checkout.paymentStatus = "pending";
+      await checkout.save();
+
+      // Update order status to pending
+      const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+      if (existingOrder) {
+        existingOrder.status = "pending";
+        await existingOrder.save();
       }
     } else if (
       transactionStatus == "cancel" ||
@@ -285,6 +315,13 @@ const handleMidtransNotification = async (req, res) => {
     ) {
       checkout.paymentStatus = "failed";
       await checkout.save();
+
+      // Update order status jika ada
+      const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+      if (existingOrder) {
+        existingOrder.status = "cancelled";
+        await existingOrder.save();
+      }
     }
 
     // Kirim respons 200 OK ke Midtrans agar tidak mengirim notifikasi berulang
@@ -367,14 +404,19 @@ const updateCheckoutStatus = async (req, res) => {
     }
     await checkout.save();
 
-    // Jika status = paid, buat order (sama seperti webhook)
-    if (status === "paid" && checkout.paymentStatus === "paid") {
+    // Jika status = paid, update order yang sudah ada
+    if (status === "paid") {
       // Check jika order sudah ada
       const existingOrder = await Order.findOne({ checkoutId: checkout._id });
 
-      if (!existingOrder) {
+      if (existingOrder) {
+        // Update status order yang sudah ada
+        existingOrder.status = "payment_confirmed";
+        await existingOrder.save();
+      } else {
+        // Fallback: buat order baru jika belum ada (seharusnya sudah dibuat saat checkout)
         const order = new Order({
-          orderNumber: generateOrderNumber(checkout.orderType),
+          orderNumber: await generateOrderNumber(checkout.orderType),
           checkoutId: checkout._id,
           customerId: checkout.user,
           orderType: checkout.orderType,
@@ -383,11 +425,25 @@ const updateCheckoutStatus = async (req, res) => {
           status: "payment_confirmed",
         });
         await order.save();
+      }
 
-        // Kosongkan cart jika MATERIAL_PURCHASE
-        if (checkout.orderType === "MATERIAL_PURCHASE") {
-          await Cart.findOneAndUpdate({ user: checkout.user }, { items: [] });
-        }
+      // Kosongkan cart jika MATERIAL_PURCHASE
+      if (checkout.orderType === "MATERIAL_PURCHASE") {
+        await Cart.findOneAndUpdate({ user: checkout.user }, { items: [] });
+      }
+    } else if (status === "pending") {
+      // Update status order saat pembayaran pending
+      const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+      if (existingOrder) {
+        existingOrder.status = "pending";
+        await existingOrder.save();
+      }
+    } else if (status === "failed" || status === "expired") {
+      // Update status order jika pembayaran gagal
+      const existingOrder = await Order.findOne({ checkoutId: checkout._id });
+      if (existingOrder) {
+        existingOrder.status = "cancelled";
+        await existingOrder.save();
       }
     }
 

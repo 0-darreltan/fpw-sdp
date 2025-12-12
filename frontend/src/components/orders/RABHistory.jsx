@@ -161,7 +161,10 @@ const RABHistory = ({ user }) => {
         orderType: "PROJECT",
         rabId: rabId,
         deliveryAddress: {
+          houseNumber: "-",
           street: "-",
+          kelurahan: "-",
+          kecamatan: "-",
           city: "-",
           province: "-",
           postalCode: "00000",
@@ -886,11 +889,20 @@ const RABHistory = ({ user }) => {
                       {formatCurrency(selectedCheckout.subtotal || 0)}
                     </span>
                   </div>
-                  {selectedCheckout.shippingCost > 0 && (
+                  {selectedCheckout.orderType === "MATERIAL_PURCHASE" &&
+                    selectedCheckout.shippingCost > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Biaya Pengiriman:</span>
+                        <span className="font-medium">
+                          {formatCurrency(selectedCheckout.shippingCost)}
+                        </span>
+                      </div>
+                    )}
+                  {selectedCheckout.orderType === "PROJECT" && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Biaya Pengiriman:</span>
-                      <span className="font-medium">
-                        {formatCurrency(selectedCheckout.shippingCost)}
+                      <span className="font-medium text-green-600">
+                        Gratis (RAB Project)
                       </span>
                     </div>
                   )}

@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { actionCart } from "../../features/cart/cartSlice";
 import { actionPurchaseCart } from "../../features/purchaseCart/purchaseCartSlice";
+import { actionOrder } from "../../features/order/orderSlice";
 import {
   initiateCheckout,
   updateCheckoutStatus,
@@ -58,7 +59,9 @@ const CheckoutPage = () => {
   const [customAddress, setCustomAddress] = useState({
     houseNumber: "",
     street: "",
+    kelurahan: "",
     kecamatan: "",
+    district: "", // Add district field for shipping calculation
     city: "",
     province: "",
     postalCode: "",
@@ -102,6 +105,8 @@ const CheckoutPage = () => {
           );
           const data = await resp.json();
 
+          console.log("Reverse geocoding data:", data); // Debug
+
           const addrObj = data.address || {};
 
           const address = {
@@ -111,8 +116,8 @@ const CheckoutPage = () => {
               addrObj.hamlet ||
               addrObj.neighbourhood ||
               "Jalan tidak diketahui",
-            kecamatan:
-              addrObj.suburb || addrObj.city_district || addrObj.county || "",
+            kelurahan: addrObj.village || "",
+            kecamatan: addrObj.municipality || addrObj.city_district || "",
             city: addrObj.city || addrObj.town || addrObj.county || "",
             province: addrObj.state || "",
             postalCode: addrObj.postcode || "",
@@ -132,6 +137,7 @@ const CheckoutPage = () => {
             rw: "",
             kelurahan: "",
             kecamatan: "",
+            district: "", // Add district field
             city: "Auto-detect gagal",
             province: "",
             postalCode: "",
@@ -173,13 +179,26 @@ const CheckoutPage = () => {
 
     setLoadingSuggestions(true);
 
-    console.log("Searching address for query:", query); // Debug
+    console.log("🔍 Searching address for query:", query); // Debug
     try {
       // 🔍 Query backend yang meneruskan ke Nominatim
-      const response = await fetch(`${url}/geocode/search?q=${query}`);
+      const response = await fetch(
+        `${url}/geocode/search?q=${encodeURIComponent(query)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      console.log("Geocoding API response:", data); // Debug
+      console.log("✅ Geocoding API response:", data); // Debug
+
+      if (!Array.isArray(data)) {
+        console.error("❌ Response is not an array:", data);
+        setAddressSuggestions([]);
+        return;
+      }
 
       const suggestions = (data || []).map((item) => {
         const addr = item.address || {};
@@ -191,7 +210,11 @@ const CheckoutPage = () => {
 
         // Kecamatan: city_district > municipality > county
         const kecamatan =
-          addr.city_district || addr.municipality || addr.county || "";
+          addr.city_district ||
+          addr.municipality ||
+          addr.county ||
+          addr.kecamatan ||
+          "";
 
         // Kota/Kabupaten: city > town > county (jika belum dipakai untuk kecamatan)
         const city =
@@ -218,6 +241,7 @@ const CheckoutPage = () => {
           address: {
             houseNumber: addr.house_number || "",
             street: addr.road || addr.pedestrian || "",
+            kelurahan: addr.village || addr.suburb || addr.neighbourhood || "",
             kecamatan: kecamatan,
             city: city,
             province: addr.state || "",
@@ -227,13 +251,16 @@ const CheckoutPage = () => {
         };
       });
 
-      console.log("Processed suggestions:", suggestions); // Debug
+      console.log("✅ Processed suggestions:", suggestions); // Debug
       setAddressSuggestions(suggestions);
       if (suggestions.length > 0) {
         setShowSuggestions(true);
       }
     } catch (error) {
-      console.error("Error searching address:", error);
+      console.error("❌ Error searching address:", error);
+      alert(
+        "Gagal mencari alamat. Pastikan backend berjalan dan koneksi internet aktif."
+      );
       setAddressSuggestions([]);
     } finally {
       setLoadingSuggestions(false);
@@ -402,7 +429,8 @@ const CheckoutPage = () => {
     0
   );
 
-  const shippingCost = selectedShipping?.cost || 0;
+  // Shipping cost hanya untuk MATERIAL_PURCHASE (cart), tidak untuk PROJECT (purchase)
+  const shippingCost = source === "cart" ? selectedShipping?.cost || 0 : 0;
   const totalAmount = subtotal + shippingCost;
 
   const handlePay = () => {
@@ -423,6 +451,7 @@ const CheckoutPage = () => {
     } else if (addressType === "custom") {
       if (
         !customAddress.street ||
+        !customAddress.kelurahan ||
         !customAddress.kecamatan ||
         !customAddress.city ||
         !customAddress.province
@@ -437,6 +466,7 @@ const CheckoutPage = () => {
         return;
       }
       deliveryAddress = customAddress;
+      console.log("📦 Alamat pengiriman yang akan digunakan:", deliveryAddress);
     }
 
     // Validasi khusus untuk MATERIAL_PURCHASE
@@ -453,8 +483,7 @@ const CheckoutPage = () => {
       orderType: source === "cart" ? "MATERIAL_PURCHASE" : "PROJECT",
       rabId: null,
       deliveryAddress: deliveryAddress,
-      shippingCost:
-        source === "cart" ? shippingCost : selectedShipping?.cost || 0,
+      shippingCost: source === "cart" ? shippingCost : 0, // Shipping cost hanya untuk MATERIAL_PURCHASE
       discount: 0,
     };
 
@@ -485,8 +514,6 @@ const CheckoutPage = () => {
           window.snap.pay(data.token, {
             onSuccess: function (result) {
               console.log("Success:", result);
-              alert("Pembayaran sukses!");
-
               // Update checkout status di database
               dispatch(
                 updateCheckoutStatus({
@@ -495,14 +522,12 @@ const CheckoutPage = () => {
                   transactionId: result.transaction_id,
                 })
               );
-
               // Kosongkan keranjang setelah pembayaran berhasil
               if (source === "cart") {
                 dispatch(actionCart.clearCart());
               } else {
                 dispatch(actionPurchaseCart.clearCart());
               }
-
               // Redirect ke dashboard setelah pembayaran sukses
               setTimeout(() => {
                 navigate("/customer");
@@ -521,6 +546,23 @@ const CheckoutPage = () => {
                 })
               );
 
+              // Order tetap dengan status payment_confirmed (menunggu)
+              if (data.orderId) {
+                dispatch(
+                  actionOrder.updateOrder({
+                    _id: data.orderId,
+                    status: "payment_confirmed",
+                  })
+                );
+              }
+
+              // Kosongkan keranjang walaupun pending
+              if (source === "cart") {
+                dispatch(actionCart.clearCart());
+              } else {
+                dispatch(actionPurchaseCart.clearCart());
+              }
+
               // Redirect ke dashboard
               setTimeout(() => {
                 navigate("/customer");
@@ -538,6 +580,16 @@ const CheckoutPage = () => {
                   transactionId: result.transaction_id,
                 })
               );
+
+              // Update order status ke cancelled
+              if (data.orderId) {
+                dispatch(
+                  actionOrder.updateOrder({
+                    _id: data.orderId,
+                    status: "cancelled",
+                  })
+                );
+              }
 
               // Redirect ke dashboard
               setTimeout(() => {
@@ -782,6 +834,39 @@ const CheckoutPage = () => {
                       <p className="text-xs text-gray-500 mb-2">
                         * Wajib diisi
                       </p>
+
+                      {/* Preview alamat yang tersimpan */}
+                      {(customAddress.street || customAddress.city) && (
+                        <div className="bg-blue-50 border border-blue-200 rounded p-2 mb-2">
+                          <p className="text-xs font-medium text-blue-700 mb-1">
+                            📍 Alamat Tersimpan:
+                          </p>
+                          <div className="text-xs text-blue-600">
+                            {customAddress.houseNumber && (
+                              <span>No. {customAddress.houseNumber}, </span>
+                            )}
+                            {customAddress.street && (
+                              <span>{customAddress.street}</span>
+                            )}
+                            {customAddress.kelurahan && (
+                              <span>, Kel. {customAddress.kelurahan}</span>
+                            )}
+                            {customAddress.kecamatan && (
+                              <span>, Kec. {customAddress.kecamatan}</span>
+                            )}
+                            {customAddress.city && (
+                              <span>, {customAddress.city}</span>
+                            )}
+                            {customAddress.province && (
+                              <span>, {customAddress.province}</span>
+                            )}
+                            {customAddress.postalCode && (
+                              <span> {customAddress.postalCode}</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       <div className="relative" ref={suggestionRef}>
                         <input
                           type="text"
@@ -824,9 +909,30 @@ const CheckoutPage = () => {
                                 key={idx}
                                 type="button"
                                 onClick={() => {
-                                  setCustomAddress(suggestion.address);
+                                  // Simpan semua data dari suggestion
+                                  setCustomAddress({
+                                    houseNumber:
+                                      suggestion.address.houseNumber || "",
+                                    street: suggestion.address.street || "",
+                                    kelurahan:
+                                      suggestion.address.kelurahan || "",
+                                    kecamatan:
+                                      suggestion.address.kecamatan || "",
+                                    district:
+                                      suggestion.address.kecamatan || "",
+                                    city: suggestion.address.city || "",
+                                    province: suggestion.address.province || "",
+                                    postalCode:
+                                      suggestion.address.postalCode || "",
+                                    country:
+                                      suggestion.address.country || "Indonesia",
+                                  });
                                   setAddressQuery(suggestion.display_name);
                                   setShowSuggestions(false);
+                                  console.log(
+                                    "✅ Alamat tersimpan:",
+                                    suggestion.address
+                                  );
                                 }}
                                 className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b last:border-b-0"
                               >
@@ -842,6 +948,18 @@ const CheckoutPage = () => {
                           </div>
                         )}
                       </div>
+                      <input
+                        type="text"
+                        placeholder="No. Rumah / Gedung"
+                        value={customAddress.houseNumber}
+                        onChange={(e) =>
+                          setCustomAddress({
+                            ...customAddress,
+                            houseNumber: e.target.value,
+                          })
+                        }
+                        className="w-full text-sm border rounded px-2 py-1"
+                      />
                       <input
                         type="text"
                         placeholder="Jalan / Gang *"
@@ -876,6 +994,7 @@ const CheckoutPage = () => {
                           setCustomAddress({
                             ...customAddress,
                             kecamatan: e.target.value,
+                            district: e.target.value, // Sync kecamatan to district
                           })
                         }
                         className="w-full text-sm border rounded px-2 py-1"
@@ -1028,12 +1147,22 @@ const CheckoutPage = () => {
                 </span>
               </div>
 
-              {/* Tampilkan biaya pengiriman untuk material purchase */}
+              {/* Tampilkan biaya pengiriman hanya untuk material purchase */}
               {source === "cart" && selectedShipping && (
                 <div className="flex justify-between mt-2 text-gray-600">
                   <span>Biaya Pengiriman</span>
                   <span className="font-semibold">
                     {formatCurrency(shippingCost)}
+                  </span>
+                </div>
+              )}
+
+              {/* Info untuk PROJECT: tidak ada biaya pengiriman */}
+              {source === "purchase" && (
+                <div className="flex justify-between mt-2 text-gray-600">
+                  <span>Biaya Pengiriman</span>
+                  <span className="font-semibold text-green-600">
+                    Gratis (RAB Project)
                   </span>
                 </div>
               )}

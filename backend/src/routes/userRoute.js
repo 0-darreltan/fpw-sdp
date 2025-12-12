@@ -10,6 +10,7 @@ const {
   createUser,
   updateUser,
   deleteUser,
+  getUserActivityReport,
 } = require("../controllers/userController");
 
 // 🔐 Middleware
@@ -41,6 +42,7 @@ router.post("/logout", LogOutUser);
 
 // ✅ Protected routes (butuh token)
 router.get("/", authMiddleware, getUser); // Admin dan PM bisa lihat list user dengan filter role
+router.get("/activity-report", authMiddleware, cekAdmin, getUserActivityReport); // Admin only - activity report
 router.get("/:id", authMiddleware, getUserById); // semua user login bisa lihat profil sendiri
 
 // 🔧 Create user (hanya Admin)

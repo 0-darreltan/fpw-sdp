@@ -6,6 +6,8 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
+  getInventoryReport,
+  getLowStockReport,
 } = require("../controllers/productController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -13,6 +15,8 @@ const { cekAdmin } = require("../middlewares/roleMiddleware");
 
 // Public routes - no authentication required for viewing products
 router.get("/", getProduct);
+router.get("/inventory-report", authMiddleware, cekAdmin, getInventoryReport);
+router.get("/low-stock-report", authMiddleware, cekAdmin, getLowStockReport);
 router.get("/:id", getProductById);
 
 // Protected routes - require admin authentication

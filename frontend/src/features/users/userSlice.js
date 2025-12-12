@@ -82,12 +82,26 @@ const RegisterUser = createAsyncThunk(
   }
 );
 
+const fetchUserActivityReport = createAsyncThunk(
+  "users/fetchUserActivityReport",
+  async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append("startDate", filters.startDate);
+    if (filters.endDate) params.append("endDate", filters.endDate);
+    if (filters.role) params.append("role", filters.role);
+
+    const response = await api.get(`/users/activity-report?${params}`);
+    return response.data;
+  }
+);
+
 const initialState = {
   currUsers: null,
   token: "",
   loggedInUser: {},
   oneUsers: {},
   listUsers: [],
+  activityReport: null,
   loading: false,
   error: null,
 };
@@ -253,6 +267,24 @@ const userSlice = createSlice({
       .addCase(RegisterUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
+      })
+
+      // fetchUserActivityReport
+      .addCase(fetchUserActivityReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserActivityReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.activityReport = action.payload?.data || action.payload || null;
+      })
+      .addCase(fetchUserActivityReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error?.message ||
+          action.payload ||
+          "Failed to fetch user activity report";
+        state.activityReport = null;
       });
   },
 });
@@ -267,6 +299,7 @@ export const actionUser = {
   LoginUser,
   LogOutUser,
   RegisterUser,
+  fetchUserActivityReport,
 };
 
 export default userSlice.reducer;

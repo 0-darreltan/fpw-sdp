@@ -22,7 +22,12 @@ router.get("/search", async (req, res) => {
 
   const cacheKey = `search:${q}`;
   const cached = cache.get(cacheKey);
-  if (cached) return res.json(cached);
+  if (cached) {
+    console.log(`✅ [Geocode] Cache hit for: ${q}`);
+    return res.json(cached);
+  }
+
+  console.log(`🔍 [Geocode] Searching for: ${q}`);
 
   try {
     const response = await axios.get(
@@ -30,21 +35,23 @@ router.get("/search", async (req, res) => {
       {
         params: {
           format: "json",
-          q,
+          q: q + ", Indonesia", // Tambahkan Indonesia untuk hasil lebih akurat
           addressdetails: 1,
-          limit: 6,
+          limit: 10, // Tingkatkan dari 6 ke 10
+          countrycodes: "id", // Batasi ke Indonesia saja
         },
         headers: {
-          "User-Agent": "YourAppName (admin@yourapp.com)",
+          "User-Agent": "ProjectFPWSDP (darrel.t23@mhs.istts.ac.id)",
         },
         timeout: 5000,
       }
     );
 
+    console.log(`✅ [Geocode] Found ${response.data.length} results for: ${q}`);
     cache.set(cacheKey, response.data);
     res.json(response.data);
   } catch (err) {
-    console.error("Nominatim search error:", err.message || err);
+    console.error("❌ [Geocode] Nominatim search error:", err.message || err);
     res.status(500).json({ error: "Failed to fetch from geocoding provider" });
   }
 });

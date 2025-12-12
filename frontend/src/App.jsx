@@ -22,6 +22,7 @@ import FrontEndHomepage from "./components/FrontEndHomepage";
 import Homepage from "./components/Homepage";
 import ShopCatalog from "./components/Catalog/ShopCatalog";
 import DetailCatalog from "./components/Catalog/DetailCatalog";
+import PurchaseHistory from "./components/orders/PurchaseHistory";
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -41,6 +42,7 @@ const router = createBrowserRouter(
       <Route element={<FrontendLayoutPage />}>
         <Route path="customer" element={<CustomerDashboard />} />
         <Route path="checkout" element={<CheckoutPage />} />
+        <Route path="purchase-history" element={<PurchaseHistory />} />
         <Route path="projectmanager" element={<ProjectManagerDashboard />} />
       </Route>
 

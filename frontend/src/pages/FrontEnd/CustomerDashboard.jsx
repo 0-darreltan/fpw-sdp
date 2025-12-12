@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import OrderForm from "../../components/orders/OrderForm";
 import RABHistory from "../../components/orders/RABHistory";
 import ProductCatalog from "../../components/products/ProductCatalog";
@@ -10,6 +11,7 @@ import { actionRab } from "../../features/RAB/rabSlice";
 
 const CustomerDashboard = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { currUsers } = useSelector((state) => state.users);
   const { listProducts } = useSelector((state) => state.product);
   const { listOrders } = useSelector((state) => state.order);
@@ -107,19 +109,21 @@ const CustomerDashboard = () => {
         estimatedBudget: orderData.total,
         expectedStartDate: orderData.startDate,
         customerNotes: orderData.notes || "",
-        items: orderData.items.map(item => ({
+        items: orderData.items.map((item) => ({
           materialName: item.productName || item.name,
           quantity: item.quantity,
-          unit: item.unit || "pcs"
-        }))
+          unit: item.unit || "pcs",
+        })),
       };
 
       console.log("📋 RAB Data:", rabData);
 
       await dispatch(actionRab.createRABRequest(rabData)).unwrap();
 
-      alert("Permintaan RAB berhasil diajukan! Silakan tunggu penawaran dari Project Manager.");
-      
+      alert(
+        "Permintaan RAB berhasil diajukan! Silakan tunggu penawaran dari Project Manager."
+      );
+
       // Clear cart after successful submission
       await handleOrderComplete();
     } catch (error) {
@@ -154,14 +158,35 @@ const CustomerDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Dashboard Customer
-          </h2>
-          <p className="text-gray-600 text-sm sm:text-base">
-            Selamat datang, {currUsers?.user?.name || currUsers?.user?.username}
-            !
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+              Dashboard Customer
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Selamat datang,{" "}
+              {currUsers?.user?.name || currUsers?.user?.username}!
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/purchase-history")}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+            <span>Riwayat Pembelian</span>
+          </button>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 mb-6">

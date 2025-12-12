@@ -54,6 +54,7 @@ const createProject = async (req, res) => {
     const {
       name,
       location,
+      locationDetails,
       description,
       projectManagerId,
       status,
@@ -72,6 +73,7 @@ const createProject = async (req, res) => {
     const project = new Project({
       name,
       location,
+      locationDetails,
       description,
       projectManagerId,
       status,

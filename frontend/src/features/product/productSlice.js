@@ -38,9 +38,35 @@ const deleteProduct = createAsyncThunk("product/delete", async (id) => {
   return response.data;
 });
 
+const fetchInventoryReport = createAsyncThunk(
+  "product/fetchInventoryReport",
+  async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.category) params.append("category", filters.category);
+    if (filters.lowStock) params.append("lowStock", filters.lowStock);
+
+    const response = await api.get(`/products/inventory-report?${params}`);
+    return response.data;
+  }
+);
+
+const fetchLowStockReport = createAsyncThunk(
+  "product/fetchLowStockReport",
+  async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.threshold) params.append("threshold", filters.threshold);
+    if (filters.category) params.append("category", filters.category);
+
+    const response = await api.get(`/products/low-stock-report?${params}`);
+    return response.data;
+  }
+);
+
 const initialState = {
   oneProduct: {},
   listProducts: [],
+  inventoryReport: null,
+  lowStockReport: null,
   loading: false,
   error: null,
 };
@@ -146,6 +172,36 @@ const productSlice = createSlice({
       .addCase(deleteProduct.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || action.error.message;
+      })
+
+      // fetchInventoryReport
+      .addCase(fetchInventoryReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchInventoryReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.inventoryReport = action.payload?.data || action.payload || null;
+      })
+      .addCase(fetchInventoryReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
+        state.inventoryReport = null;
+      })
+
+      // fetchLowStockReport
+      .addCase(fetchLowStockReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchLowStockReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.lowStockReport = action.payload?.data || action.payload || null;
+      })
+      .addCase(fetchLowStockReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
+        state.lowStockReport = null;
       });
   },
 });
@@ -156,5 +212,7 @@ export const actionProduct = {
   createProduct,
   updateProduct,
   deleteProduct,
+  fetchInventoryReport,
+  fetchLowStockReport,
 };
 export default productSlice.reducer;

@@ -185,10 +185,180 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// ✅ GET inventory report (Admin only)
+const getInventoryReport = async (req, res) => {
+  try {
+    const { category, lowStock } = req.query;
+
+    // Build query filter
+    const filter = {};
+    if (category) filter.category = category;
+
+    // Get all products
+    const products = await Product.find(filter).sort({ createdAt: -1 });
+
+    // Calculate statistics
+    const stats = {
+      totalProducts: products.length,
+      totalValue: products.reduce((sum, p) => sum + (p.price * p.stock), 0),
+      totalStock: products.reduce((sum, p) => sum + p.stock, 0),
+      byCategory: {},
+      lowStockItems: products.filter(p => p.stock < 10).length,
+      outOfStockItems: products.filter(p => p.stock === 0).length,
+    };
+
+    // Group by category
+    products.forEach(product => {
+      const cat = product.category || "Uncategorized";
+      if (!stats.byCategory[cat]) {
+        stats.byCategory[cat] = {
+          count: 0,
+          totalStock: 0,
+          totalValue: 0,
+        };
+      }
+      stats.byCategory[cat].count++;
+      stats.byCategory[cat].totalStock += product.stock;
+      stats.byCategory[cat].totalValue += product.price * product.stock;
+    });
+
+    // Filter low stock if requested
+    let productsToReturn = products;
+    if (lowStock === "true") {
+      productsToReturn = products.filter(p => p.stock < 10);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        products: productsToReturn,
+        stats,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ✅ Get Low Stock Report
+const getLowStockReport = async (req, res) => {
+  try {
+    const { threshold = 10, category } = req.query;
+    const stockThreshold = parseInt(threshold);
+
+    // Build query
+    const query = {};
+    if (category) query.category = category;
+
+    // Fetch all products
+    const products = await Product.find(query).sort({ stock: 1 }); // Sort by stock ascending
+
+    // Categorize products by stock level
+    const criticalStock = []; // stock = 0
+    const veryLowStock = []; // 0 < stock <= threshold/4
+    const lowStock = []; // threshold/4 < stock <= threshold/2
+    const moderateLowStock = []; // threshold/2 < stock <= threshold
+
+    products.forEach(product => {
+      if (product.stock === 0) {
+        criticalStock.push({
+          ...product.toObject(),
+          status: "CRITICAL",
+          urgency: "IMMEDIATE",
+          daysUntilEmpty: 0,
+        });
+      } else if (product.stock <= stockThreshold / 4) {
+        veryLowStock.push({
+          ...product.toObject(),
+          status: "VERY_LOW",
+          urgency: "URGENT",
+          daysUntilEmpty: Math.ceil(product.stock / 2), // Assuming 2 units sold per day
+        });
+      } else if (product.stock <= stockThreshold / 2) {
+        lowStock.push({
+          ...product.toObject(),
+          status: "LOW",
+          urgency: "HIGH",
+          daysUntilEmpty: Math.ceil(product.stock / 2),
+        });
+      } else if (product.stock <= stockThreshold) {
+        moderateLowStock.push({
+          ...product.toObject(),
+          status: "MODERATE_LOW",
+          urgency: "MEDIUM",
+          daysUntilEmpty: Math.ceil(product.stock / 2),
+        });
+      }
+    });
+
+    // Combine all low stock items
+    const allLowStockItems = [
+      ...criticalStock,
+      ...veryLowStock,
+      ...lowStock,
+      ...moderateLowStock,
+    ];
+
+    // Calculate statistics
+    const stats = {
+      totalLowStockItems: allLowStockItems.length,
+      criticalCount: criticalStock.length,
+      veryLowCount: veryLowStock.length,
+      lowCount: lowStock.length,
+      moderateLowCount: moderateLowStock.length,
+      totalValue: allLowStockItems.reduce(
+        (sum, p) => sum + p.price * p.stock,
+        0
+      ),
+      estimatedRestockValue: allLowStockItems.reduce(
+        (sum, p) => sum + p.price * (stockThreshold - p.stock),
+        0
+      ),
+      byCategory: {},
+    };
+
+    // Group by category
+    allLowStockItems.forEach(product => {
+      const cat = product.category || "Uncategorized";
+      if (!stats.byCategory[cat]) {
+        stats.byCategory[cat] = {
+          count: 0,
+          criticalCount: 0,
+          veryLowCount: 0,
+          lowCount: 0,
+          moderateLowCount: 0,
+        };
+      }
+      stats.byCategory[cat].count++;
+      if (product.status === "CRITICAL") stats.byCategory[cat].criticalCount++;
+      if (product.status === "VERY_LOW") stats.byCategory[cat].veryLowCount++;
+      if (product.status === "LOW") stats.byCategory[cat].lowCount++;
+      if (product.status === "MODERATE_LOW") stats.byCategory[cat].moderateLowCount++;
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        critical: criticalStock,
+        veryLow: veryLowStock,
+        low: lowStock,
+        moderateLow: moderateLowStock,
+        allItems: allLowStockItems,
+        stats,
+        threshold: stockThreshold,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getProduct,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  getInventoryReport,
+  getLowStockReport,
 };

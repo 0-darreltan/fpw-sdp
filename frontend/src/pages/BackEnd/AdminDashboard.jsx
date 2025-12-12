@@ -8,6 +8,16 @@ import MaterialManagement from "../../components/admin/MaterialManagement";
 import OrderManagement from "../../components/admin/OrderManagement";
 import MaterialRequestManagement from "../../components/admin/MaterialRequestManagement";
 import RABRequestManagement from "../../components/admin/RABRequestManagement";
+import SalesReport from "../../components/admin/SalesReport";
+import PaymentReport from "../../components/admin/PaymentReport";
+import InventoryReport from "../../components/admin/InventoryReport";
+import OutgoingInventoryReport from "../../components/admin/OutgoingInventoryReport";
+import BestSellerReport from "../../components/admin/BestSellerReport";
+import CustomerLoyaltyReport from "../../components/admin/CustomerLoyaltyReport";
+import LowStockReport from "../../components/admin/LowStockReport";
+import ProfitReport from "../../components/admin/ProfitReport";
+import TrendAnalysisReport from "../../components/admin/TrendAnalysisReport";
+import UserActivityReport from "../../components/admin/UserActivityReport";
 
 const AdminDashboard = ({ data }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -65,6 +75,36 @@ const AdminDashboard = ({ data }) => {
 
       case "rab-requests":
         return <RABRequestManagement />;
+
+      case "sales-report":
+        return <SalesReport />;
+
+      case "payment-report":
+        return <PaymentReport />;
+
+      case "inventory-report":
+        return <InventoryReport />;
+
+      case "outgoing-inventory-report":
+        return <OutgoingInventoryReport />;
+
+      case "best-seller-report":
+        return <BestSellerReport />;
+
+      case "customer-loyalty-report":
+        return <CustomerLoyaltyReport />;
+
+      case "low-stock-report":
+        return <LowStockReport />;
+
+      case "profit-report":
+        return <ProfitReport />;
+
+      case "trend-analysis-report":
+        return <TrendAnalysisReport />;
+
+      case "user-activity-report":
+        return <UserActivityReport />;
 
       default:
         return (
@@ -267,6 +307,156 @@ const AdminDashboard = ({ data }) => {
               >
                 <span className="text-2xl mr-3"></span>
                 <span>Permintaan RAB Customer</span>
+              </button>
+            </li>
+
+            {/* Laporan Penjualan */}
+            <li>
+              <button
+                onClick={() => handleTabChange("sales-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "sales-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">📊</span>
+                <span>Laporan Penjualan</span>
+              </button>
+            </li>
+
+            {/* Laporan Pembayaran */}
+            <li>
+              <button
+                onClick={() => handleTabChange("payment-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "payment-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">💰</span>
+                <span>Laporan Pembayaran</span>
+              </button>
+            </li>
+
+            {/* Laporan Barang Masuk */}
+            <li>
+              <button
+                onClick={() => handleTabChange("inventory-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "inventory-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">📦</span>
+                <span>Laporan Barang Masuk</span>
+              </button>
+            </li>
+
+            {/* Laporan Barang Keluar */}
+            <li>
+              <button
+                onClick={() => handleTabChange("outgoing-inventory-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "outgoing-inventory-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">📤</span>
+                <span>Laporan Barang Keluar</span>
+              </button>
+            </li>
+
+            {/* Laporan Barang Paling Laris */}
+            <li>
+              <button
+                onClick={() => handleTabChange("best-seller-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "best-seller-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">🏆</span>
+                <span>Barang Paling Laris</span>
+              </button>
+            </li>
+
+            {/* Laporan Customer Paling Loyal */}
+            <li>
+              <button
+                onClick={() => handleTabChange("customer-loyalty-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "customer-loyalty-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">👑</span>
+                <span>Customer Paling Loyal</span>
+              </button>
+            </li>
+
+            {/* Laporan Stok Menipis */}
+            <li>
+              <button
+                onClick={() => handleTabChange("low-stock-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "low-stock-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">⚠️</span>
+                <span>Stok Menipis</span>
+              </button>
+            </li>
+
+            {/* Laporan Keuntungan/Profit */}
+            <li>
+              <button
+                onClick={() => handleTabChange("profit-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "profit-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">💰</span>
+                <span>Laporan Keuntungan</span>
+              </button>
+            </li>
+
+            {/* Laporan Trend Analysis */}
+            <li>
+              <button
+                onClick={() => handleTabChange("trend-analysis-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "trend-analysis-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">📈</span>
+                <span>Analisis Trend</span>
+              </button>
+            </li>
+
+            {/* Laporan Aktivitas User */}
+            <li>
+              <button
+                onClick={() => handleTabChange("user-activity-report")}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
+                  activeTab === "user-activity-report"
+                    ? "bg-gray-700 text-white"
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+              >
+                <span className="text-2xl mr-3">👥</span>
+                <span>Aktivitas User</span>
               </button>
             </li>
           </ul>
