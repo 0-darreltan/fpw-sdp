@@ -11,32 +11,41 @@ const fetchUserById = createAsyncThunk("users/fetchUserById", async (id) => {
   return response.data;
 });
 
-const createUser = createAsyncThunk("users/createUser", async (userData, { rejectWithValue }) => {
-  try {
-    const response = await api.post("/users", userData);
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data || err.message);
+const createUser = createAsyncThunk(
+  "users/createUser",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await api.post("/users", userData);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
   }
-});
+);
 
-const updateUser = createAsyncThunk("users/updateUser", async (userData, { rejectWithValue }) => {
-  try {
-    const response = await api.put(`/users/${userData.id}`, userData);
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data || err.message);
+const updateUser = createAsyncThunk(
+  "users/updateUser",
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/users/${userData.id}`, userData);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
   }
-});
+);
 
-const deleteUser = createAsyncThunk("users/deleteUser", async (id, { rejectWithValue }) => {
-  try {
-    const response = await api.delete(`/users/${id}`);
-    return response.data;
-  } catch (err) {
-    return rejectWithValue(err.response?.data || err.message);
+const deleteUser = createAsyncThunk(
+  "users/deleteUser",
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/users/${id}`);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
   }
-});
+);
 
 const LoginUser = createAsyncThunk(
   "users/login",
@@ -84,14 +93,91 @@ const RegisterUser = createAsyncThunk(
 
 const fetchUserActivityReport = createAsyncThunk(
   "users/fetchUserActivityReport",
-  async (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.startDate) params.append("startDate", filters.startDate);
-    if (filters.endDate) params.append("endDate", filters.endDate);
-    if (filters.role) params.append("role", filters.role);
+  async (filters = {}, { rejectWithValue }) => {
+    try {
+      console.log("🔹 Step 1: Building query params", filters);
+      const params = new URLSearchParams();
 
-    const response = await api.get(`/users/activity-report?${params}`);
-    return response.data;
+      // Hanya tambahkan param jika ada nilai dan tidak kosong
+      if (filters.startDate && filters.startDate.trim() !== "") {
+        params.append("startDate", filters.startDate);
+      }
+      if (filters.endDate && filters.endDate.trim() !== "") {
+        params.append("endDate", filters.endDate);
+      }
+      if (filters.role && filters.role.trim() !== "") {
+        params.append("role", filters.role);
+      }
+
+      // Buat URL dengan atau tanpa query params
+      const queryString = params.toString();
+      const url = queryString
+        ? `/users/activity-report?${queryString}`
+        : `/users/activity-report`;
+
+      console.log("🔹 Step 2: URL to fetch:", url);
+      console.log("🔹 Step 3: Checking authentication...");
+      const token = sessionStorage.getItem("token");
+      const userStr = sessionStorage.getItem("user");
+      const user = userStr ? JSON.parse(userStr) : null;
+
+      console.log("🔹 Token exists?", !!token);
+      console.log(
+        "🔹 Token preview:",
+        token ? token.substring(0, 20) + "..." : "NO TOKEN"
+      );
+      console.log("🔹 Current user:", user);
+      console.log("🔹 User role:", user?.role);
+
+      // Cek apakah user adalah admin
+      if (!user || (user.role !== "admin" && user.role !== "Administrator")) {
+        console.error("❌ AUTHORIZATION ISSUE: User is not admin!");
+        console.error("❌ Current role:", user?.role);
+        console.error("❌ This endpoint requires admin role!");
+        return rejectWithValue({
+          message:
+            "Access denied. Only administrators can view activity reports.",
+          status: 403,
+          requiresAdmin: true,
+        });
+      }
+
+      console.log("🔹 Step 4: Making API call...");
+      const response = await api.get(url);
+
+      console.log("✅ Step 5: Response received!");
+      console.log("📡 Response Status:", response.status);
+      console.log("📡 Response StatusText:", response.statusText);
+      console.log("📡 Full Response Object:", response);
+      console.log("📊 Response Data:", response.data);
+      console.log("🔍 Response Data Type:", typeof response.data);
+      console.log(
+        "🔍 Response Data Keys:",
+        response.data ? Object.keys(response.data) : "null"
+      );
+
+      if (!response.data) {
+        console.error("❌ Response data is null or undefined!");
+        return rejectWithValue("No data received from server");
+      }
+
+      console.log("✅ Step 6: Returning data to Redux");
+      return response.data;
+    } catch (err) {
+      console.error("❌ Error in fetchUserActivityReport:");
+      console.error("Error type:", err.name);
+      console.error("Error message:", err.message);
+      console.error("Error response:", err.response);
+      console.error("Error response data:", err.response?.data);
+      console.error("Error response status:", err.response?.status);
+      console.error("Full error:", err);
+
+      return rejectWithValue({
+        message: err.response?.data?.message || err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+      });
+    }
   }
 );
 
@@ -273,17 +359,66 @@ const userSlice = createSlice({
       .addCase(fetchUserActivityReport.pending, (state) => {
         state.loading = true;
         state.error = null;
+        console.log("🔄 Fetching user activity report...");
       })
       .addCase(fetchUserActivityReport.fulfilled, (state, action) => {
         state.loading = false;
-        state.activityReport = action.payload?.data || action.payload || null;
+        console.log("✅ Raw action.payload:", action.payload);
+        console.log("🔍 Payload type:", typeof action.payload);
+        console.log(
+          "🔍 Payload keys:",
+          action.payload ? Object.keys(action.payload) : "null"
+        );
+
+        // Backend mengembalikan { success: true, data: {...} }
+        // action.payload bisa berupa { success: true, data: {...} } atau langsung {...}
+        let reportData = null;
+
+        if (action.payload?.success && action.payload?.data) {
+          // Format: { success: true, data: {...} }
+          console.log("📌 Extracting from action.payload.data");
+          reportData = action.payload.data;
+        } else if (action.payload?.data) {
+          // Format: { data: {...} }
+          console.log(
+            "📌 Extracting from action.payload.data (no success field)"
+          );
+          reportData = action.payload.data;
+        } else if (action.payload?.stats) {
+          // Format langsung: { stats: {...}, users: [...], ... }
+          console.log("📌 Using action.payload directly (has stats)");
+          reportData = action.payload;
+        } else {
+          console.warn("⚠️ No valid data format found");
+          reportData = null;
+        }
+
+        console.log("📊 Final processed activityReport:", reportData);
+        console.log("📊 Report has stats?", !!reportData?.stats);
+        state.activityReport = reportData;
       })
       .addCase(fetchUserActivityReport.rejected, (state, action) => {
         state.loading = false;
-        state.error =
-          action.error?.message ||
-          action.payload ||
-          "Failed to fetch user activity report";
+        console.error("❌ Failed to fetch user activity report:", action);
+        console.error("❌ Payload:", action.payload);
+
+        let errorMessage = "Failed to fetch user activity report";
+
+        if (action.payload?.requiresAdmin) {
+          errorMessage =
+            "⚠️ Akses ditolak: Hanya Administrator yang dapat melihat laporan aktivitas user";
+        } else if (action.payload?.status === 403) {
+          errorMessage =
+            "⚠️ Akses ditolak: Anda tidak memiliki izin untuk mengakses laporan ini";
+        } else if (action.payload?.status === 401) {
+          errorMessage = "⚠️ Sesi Anda telah berakhir. Silakan login kembali";
+        } else if (action.payload?.message) {
+          errorMessage = action.payload.message;
+        } else if (action.error?.message) {
+          errorMessage = action.error.message;
+        }
+
+        state.error = errorMessage;
         state.activityReport = null;
       });
   },

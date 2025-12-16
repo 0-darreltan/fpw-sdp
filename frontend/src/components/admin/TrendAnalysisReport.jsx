@@ -86,11 +86,20 @@ const TrendAnalysisReport = () => {
     );
   }
 
-  const { stats, dailyTrend, weeklyTrend, monthlyTrend, dayOfWeekStats } =
-    trendReport;
+  const {
+    stats = {},
+    dailyTrend = [],
+    weeklyTrend = [],
+    monthlyTrend = [],
+    dayOfWeekStats = [],
+  } = trendReport || {};
 
   // Format currency
   const formatCurrency = (value) => {
+    // Handle NaN, null, undefined
+    if (value == null || isNaN(value)) {
+      return "Rp 0";
+    }
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
@@ -100,6 +109,10 @@ const TrendAnalysisReport = () => {
 
   // Format percentage
   const formatPercentage = (value) => {
+    // Handle NaN, null, undefined
+    if (value == null || isNaN(value)) {
+      return "+0.0%";
+    }
     return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
   };
 
@@ -107,7 +120,10 @@ const TrendAnalysisReport = () => {
   const dailyChartData = {
     labels: dailyTrend.map((item) => {
       const date = new Date(item.date);
-      return date.toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+      return date.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+      });
     }),
     datasets: [
       {
@@ -508,31 +524,31 @@ const TrendAnalysisReport = () => {
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-lg shadow-md">
           <div className="text-sm opacity-90">Total Revenue</div>
           <div className="text-2xl font-bold mt-1">
-            {formatCurrency(stats.totalRevenue)}
+            {formatCurrency(stats.totalRevenue || 0)}
           </div>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md">
           <div className="text-sm opacity-90">Total Order</div>
           <div className="text-2xl font-bold mt-1">
-            {stats.totalOrders.toLocaleString("id-ID")}
+            {(stats.totalOrders || 0).toLocaleString("id-ID")}
           </div>
         </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-lg shadow-md">
           <div className="text-sm opacity-90">Rata-rata Order</div>
           <div className="text-2xl font-bold mt-1">
-            {formatCurrency(stats.averageOrderValue)}
+            {formatCurrency(stats.averageOrderValue || 0)}
           </div>
         </div>
         <div
           className={`bg-gradient-to-br ${
-            stats.growthRate >= 0
+            (stats.growthRate || 0) >= 0
               ? "from-emerald-500 to-emerald-600"
               : "from-red-500 to-red-600"
           } text-white p-6 rounded-lg shadow-md`}
         >
           <div className="text-sm opacity-90">Pertumbuhan</div>
           <div className="text-2xl font-bold mt-1">
-            {formatPercentage(stats.growthRate)}
+            {formatPercentage(stats.growthRate || 0)}
           </div>
         </div>
       </div>
@@ -552,7 +568,7 @@ const TrendAnalysisReport = () => {
                 {stats.peakDay}
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                Revenue: {formatCurrency(stats.peakDayRevenue)}
+                Revenue: {formatCurrency(stats.peakDayRevenue || 0)}
               </div>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
@@ -567,7 +583,7 @@ const TrendAnalysisReport = () => {
                 })}
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                Revenue: {formatCurrency(stats.peakDateRevenue)}
+                Revenue: {formatCurrency(stats.peakDateRevenue || 0)}
               </div>
             </div>
           </div>

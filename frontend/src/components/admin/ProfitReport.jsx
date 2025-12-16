@@ -32,9 +32,11 @@ ChartJS.register(
 
 const ProfitReport = () => {
   const dispatch = useDispatch();
-  const { profitReport: reportData, loading, error } = useSelector(
-    (state) => state.order
-  );
+  const {
+    profitReport: reportData,
+    loading,
+    error,
+  } = useSelector((state) => state.order);
 
   const [filters, setFilters] = useState({
     startDate: "",
@@ -242,7 +244,9 @@ const ProfitReport = () => {
           label: function (context) {
             const total = context.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((context.parsed / total) * 100).toFixed(1);
-            return `${context.label}: ${formatCurrency(context.parsed)} (${percentage}%)`;
+            return `${context.label}: ${formatCurrency(
+              context.parsed
+            )} (${percentage}%)`;
           },
         },
       },
@@ -432,8 +436,8 @@ const ProfitReport = () => {
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Dari {stats.totalOrders || 0} order ({stats.totalQuantitySold || 0}{" "}
-                item terjual)
+                Dari {stats.totalOrders || 0} order (
+                {stats.totalQuantitySold || 0} item terjual)
               </p>
             </div>
 
@@ -447,9 +451,7 @@ const ProfitReport = () => {
                   ({formatCurrency(stats.totalCOGS || 0)})
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Cost of Goods Sold
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Cost of Goods Sold</p>
             </div>
 
             {/* Gross Profit */}
@@ -560,7 +562,10 @@ const ProfitReport = () => {
           {/* Revenue Breakdown */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div style={{ height: "350px" }}>
-              <Bar data={revenueBreakdownData} options={revenueBreakdownOptions} />
+              <Bar
+                data={revenueBreakdownData}
+                options={revenueBreakdownOptions}
+              />
             </div>
           </div>
 

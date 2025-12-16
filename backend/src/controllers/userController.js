@@ -280,21 +280,38 @@ const getUserActivityReport = async (req, res) => {
   try {
     const { startDate, endDate, role } = req.query;
 
+    // Helper function to validate and parse date
+    const parseDate = (dateString) => {
+      if (!dateString || dateString.trim() === "") return null;
+      const date = new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    // Parse and validate dates
+    const parsedStartDate = parseDate(startDate);
+    const parsedEndDate = parseDate(endDate);
+
     // Build query
     const query = {};
     if (role) query.role = role;
 
     // Fetch all users
-    const users = await User.find(query).select("-password").sort({ createdAt: -1 });
+    const users = await User.find(query)
+      .select("-password")
+      .sort({ createdAt: -1 });
 
     // Date filter for createdAt
     let filteredUsers = users;
-    if (startDate || endDate) {
+    if (parsedStartDate || parsedEndDate) {
       filteredUsers = users.filter((user) => {
+        if (!user.createdAt) return false;
+
         const userDate = new Date(user.createdAt);
-        if (startDate && userDate < new Date(startDate)) return false;
-        if (endDate) {
-          const end = new Date(endDate);
+        if (isNaN(userDate.getTime())) return false;
+
+        if (parsedStartDate && userDate < parsedStartDate) return false;
+        if (parsedEndDate) {
+          const end = new Date(parsedEndDate);
           end.setHours(23, 59, 59, 999);
           if (userDate > end) return false;
         }
@@ -307,11 +324,11 @@ const getUserActivityReport = async (req, res) => {
 
     // Build activity log query
     const activityQuery = {};
-    if (startDate || endDate) {
+    if (parsedStartDate || parsedEndDate) {
       activityQuery.timestamp = {};
-      if (startDate) activityQuery.timestamp.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
+      if (parsedStartDate) activityQuery.timestamp.$gte = parsedStartDate;
+      if (parsedEndDate) {
+        const end = new Date(parsedEndDate);
         end.setHours(23, 59, 59, 999);
         activityQuery.timestamp.$lte = end;
       }
@@ -363,14 +380,22 @@ const getUserActivityReport = async (req, res) => {
     activityLogs.forEach((log) => {
       if (!log.userId) return;
 
+      // Validate timestamp
+      if (!log.timestamp) return;
+      const logDate = new Date(log.timestamp);
+      if (isNaN(logDate.getTime())) return;
+
       const userId = log.userId._id.toString();
-      const dateKey = new Date(log.timestamp).toISOString().split("T")[0];
+      const dateKey = logDate.toISOString().split("T")[0];
       const action = log.action || "VIEW";
 
       // Update user stats
       if (userStats[userId]) {
         userStats[userId].activityCount++;
-        if (!userStats[userId].lastActive || log.timestamp > userStats[userId].lastActive) {
+        if (
+          !userStats[userId].lastActive ||
+          log.timestamp > userStats[userId].lastActive
+        ) {
           userStats[userId].lastActive = log.timestamp;
         }
         if (userStats[userId].actions[action] !== undefined) {
@@ -414,7 +439,9 @@ const getUserActivityReport = async (req, res) => {
     });
 
     // Convert to arrays and sort
-    const userList = Object.values(userStats).sort((a, b) => b.activityCount - a.activityCount);
+    const userList = Object.values(userStats).sort(
+      (a, b) => b.activityCount - a.activityCount
+    );
     const roleList = Object.values(roleStats);
     const activityTimeline = Object.values(activityByDate)
       .map((day) => ({
@@ -428,15 +455,26 @@ const getUserActivityReport = async (req, res) => {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const activeUsers30d = userList.filter(
-      (u) => u.lastActive && new Date(u.lastActive) >= thirtyDaysAgo
-    ).length;
-    const activeUsers7d = userList.filter(
-      (u) => u.lastActive && new Date(u.lastActive) >= sevenDaysAgo
-    ).length;
-    const newUsers30d = filteredUsers.filter(
-      (u) => new Date(u.createdAt) >= thirtyDaysAgo
-    ).length;
+    const activeUsers30d = userList.filter((u) => {
+      if (!u.lastActive) return false;
+      const lastActiveDate = new Date(u.lastActive);
+      if (isNaN(lastActiveDate.getTime())) return false;
+      return lastActiveDate >= thirtyDaysAgo;
+    }).length;
+
+    const activeUsers7d = userList.filter((u) => {
+      if (!u.lastActive) return false;
+      const lastActiveDate = new Date(u.lastActive);
+      if (isNaN(lastActiveDate.getTime())) return false;
+      return lastActiveDate >= sevenDaysAgo;
+    }).length;
+
+    const newUsers30d = filteredUsers.filter((u) => {
+      if (!u.createdAt) return false;
+      const createdDate = new Date(u.createdAt);
+      if (isNaN(createdDate.getTime())) return false;
+      return createdDate >= thirtyDaysAgo;
+    }).length;
 
     const stats = {
       totalUsers: filteredUsers.length,
@@ -446,7 +484,9 @@ const getUserActivityReport = async (req, res) => {
       newUsers30d,
       totalActivities: activityLogs.length,
       averageActivitiesPerUser:
-        filteredUsers.length > 0 ? activityLogs.length / filteredUsers.length : 0,
+        filteredUsers.length > 0
+          ? activityLogs.length / filteredUsers.length
+          : 0,
       mostActiveUser: userList[0] || null,
     };
 
