@@ -95,7 +95,6 @@ const fetchUserActivityReport = createAsyncThunk(
   "users/fetchUserActivityReport",
   async (filters = {}, { rejectWithValue }) => {
     try {
-      console.log("🔹 Step 1: Building query params", filters);
       const params = new URLSearchParams();
 
       // Hanya tambahkan param jika ada nilai dan tidak kosong
@@ -115,63 +114,13 @@ const fetchUserActivityReport = createAsyncThunk(
         ? `/users/activity-report?${queryString}`
         : `/users/activity-report`;
 
-      console.log("🔹 Step 2: URL to fetch:", url);
-      console.log("🔹 Step 3: Checking authentication...");
-      const token = sessionStorage.getItem("token");
-      const userStr = sessionStorage.getItem("user");
-      const user = userStr ? JSON.parse(userStr) : null;
-
-      console.log("🔹 Token exists?", !!token);
-      console.log(
-        "🔹 Token preview:",
-        token ? token.substring(0, 20) + "..." : "NO TOKEN"
-      );
-      console.log("🔹 Current user:", user);
-      console.log("🔹 User role:", user?.role);
-
-      // Cek apakah user adalah admin
-      if (!user || (user.role !== "admin" && user.role !== "Administrator")) {
-        console.error("❌ AUTHORIZATION ISSUE: User is not admin!");
-        console.error("❌ Current role:", user?.role);
-        console.error("❌ This endpoint requires admin role!");
-        return rejectWithValue({
-          message:
-            "Access denied. Only administrators can view activity reports.",
-          status: 403,
-          requiresAdmin: true,
-        });
-      }
-
-      console.log("🔹 Step 4: Making API call...");
+      // API call - backend akan handle authorization via middleware
       const response = await api.get(url);
 
-      console.log("✅ Step 5: Response received!");
-      console.log("📡 Response Status:", response.status);
-      console.log("📡 Response StatusText:", response.statusText);
-      console.log("📡 Full Response Object:", response);
-      console.log("📊 Response Data:", response.data);
-      console.log("🔍 Response Data Type:", typeof response.data);
-      console.log(
-        "🔍 Response Data Keys:",
-        response.data ? Object.keys(response.data) : "null"
-      );
-
-      if (!response.data) {
-        console.error("❌ Response data is null or undefined!");
-        return rejectWithValue("No data received from server");
-      }
-
-      console.log("✅ Step 6: Returning data to Redux");
+      // Backend mengembalikan: { success: true, data: {...} }
       return response.data;
     } catch (err) {
-      console.error("❌ Error in fetchUserActivityReport:");
-      console.error("Error type:", err.name);
-      console.error("Error message:", err.message);
-      console.error("Error response:", err.response);
-      console.error("Error response data:", err.response?.data);
-      console.error("Error response status:", err.response?.status);
-      console.error("Full error:", err);
-
+      // Handle error dari backend
       return rejectWithValue({
         message: err.response?.data?.message || err.message,
         status: err.response?.status,

@@ -30,7 +30,7 @@ ChartJS.register(
 const UserActivityReport = () => {
   const dispatch = useDispatch();
   const { activityReport, loading, error } = useSelector(
-    (state) => state.user || {}
+    (state) => state.users || {}
   );
 
   const [filters, setFilters] = useState({

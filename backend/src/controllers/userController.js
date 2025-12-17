@@ -490,6 +490,12 @@ const getUserActivityReport = async (req, res) => {
       mostActiveUser: userList[0] || null,
     };
 
+    console.log(stats);
+    console.log(userList);
+    console.log(roleList);
+    console.log(activityTimeline);
+    console.log(activityLogs.slice(0, 50));
+
     return res.status(200).json({
       success: true,
       data: {
