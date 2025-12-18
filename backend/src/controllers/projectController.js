@@ -120,20 +120,31 @@ const createProject = async (req, res) => {
 // ✅ Update project
 const updateProject = async (req, res) => {
   try {
+    console.log("=== UPDATE PROJECT REQUEST ===");
+    console.log("Project ID:", req.params.id);
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+
     const { error } = updateProjectSchema.validate(req.body);
-    if (error)
+    if (error) {
+      console.error("Validation error:", error.details[0].message);
+      console.error("Full validation error:", error.details);
       return res
         .status(400)
         .json({ success: false, message: error.details[0].message });
+    }
 
     const project = await Project.findById(req.params.id);
-    if (!project)
+    if (!project) {
+      console.error("Project not found:", req.params.id);
       return res
         .status(404)
         .json({ success: false, message: "Project not found" });
+    }
 
+    console.log("Project before update:", project);
     Object.assign(project, req.body);
     await project.save();
+    console.log("Project after update:", project);
 
     return res.status(200).json({
       success: true,
@@ -141,6 +152,8 @@ const updateProject = async (req, res) => {
       data: project,
     });
   } catch (error) {
+    console.error("=== UPDATE PROJECT ERROR ===");
+    console.error("Error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

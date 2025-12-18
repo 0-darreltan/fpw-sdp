@@ -173,17 +173,28 @@ const ProjectManagerDashboard = ({
 
   const handleUpdateProject = async (payload) => {
     try {
-      console.log("Update payload:", payload);
+      console.log("=== FRONTEND UPDATE PROJECT ===");
+      console.log("Full payload:", JSON.stringify(payload, null, 2));
+      console.log("Payload keys:", Object.keys(payload));
+      console.log("Payload types:", Object.entries(payload).map(([key, value]) => ({
+        key,
+        type: typeof value,
+        value: value
+      })));
+      
       const res = await dispatch(actionProject.updateProject(payload)).unwrap();
+      console.log("Update success:", res);
       showToast("Proyek berhasil diperbarui", "success");
       // Refresh data
       dispatch(actionProject.fetchProjects());
       return res;
     } catch (err) {
+      console.error("=== FRONTEND UPDATE PROJECT ERROR ===");
       console.error("Failed to update project", err);
       console.error("Error response:", err.response?.data);
+      console.error("Error message:", err.message);
       showToast(
-        "Gagal memperbarui proyek: " + (err.message || "Unknown error"),
+        "Gagal memperbarui proyek: " + (err.response?.data?.message || err.message || "Unknown error"),
         "error"
       );
     }

@@ -154,11 +154,11 @@ const Homepage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
             <div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-800 mb-4 md:mb-6">
-                Tentang PT. Agung Bumi Karsa
+                Tentang PT. Agung Beton Kendari
               </h2>
               <p className="text-gray-600 text-base md:text-lg mb-4 md:mb-6">
                 Didirikan dengan visi menjadi perusahaan konstruksi terdepan di
-                Indonesia, PT. Agung Bumi Karsa telah berpengalaman lebih dari
+                Indonesia, PT. Agung Beton Kendari telah berpengalaman lebih dari
                 15 tahun dalam menangani berbagai proyek konstruksi skala besar.
               </p>
               <div className="space-y-3 md:space-y-4">

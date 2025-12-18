@@ -165,7 +165,7 @@ const Sertificat = () => {
               Sertifikasi & Akreditasi
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto">
-              PT Agung Bumi Karsa - Komitmen terhadap Kualitas, Keselamatan, dan
+              PT Agung Beton Kendari - Komitmen terhadap Kualitas, Keselamatan, dan
               Lingkungan yang Diakui Internasional
             </p>
           </div>
@@ -181,7 +181,7 @@ const Sertificat = () => {
               Sertifikasi Internasional & Nasional
             </h2>
             <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-              PT Agung Bumi Karsa telah meraih berbagai sertifikasi yang
+              PT Agung Beton Kendari telah meraih berbagai sertifikasi yang
               membuktikan komitmen kami terhadap standar kualitas tertinggi,
               keselamatan kerja, dan tanggung jawab lingkungan sesuai dengan
               standar internasional ISO dan standar nasional Indonesia.
@@ -358,7 +358,7 @@ const Sertificat = () => {
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-left">
                   <h3 className="font-bold text-lg mb-2">🏢 Company Info</h3>
                   <p className="text-blue-100 text-sm">
-                    PT. Agung Bumi Karsa
+                    PT. Agung Beton Kendari
                     <br />
                     Jalan Suparoto, RT.06 Kendari, Indonesia
                     <br />
