@@ -565,10 +565,10 @@ const TrendAnalysisReport = () => {
                 Hari Terbaik
               </div>
               <div className="text-2xl font-bold text-orange-600 mt-1">
-                {stats.peakDay}
+                {stats.peakDay?.dayOfWeek || "-"}
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                Revenue: {formatCurrency(stats.peakDayRevenue || 0)}
+                Revenue: {formatCurrency(stats.peakDay?.revenue || 0)}
               </div>
             </div>
             <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
@@ -576,14 +576,16 @@ const TrendAnalysisReport = () => {
                 Tanggal Terbaik
               </div>
               <div className="text-2xl font-bold text-blue-600 mt-1">
-                {new Date(stats.peakDate).toLocaleDateString("id-ID", {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric",
-                })}
+                {stats.peakDate?.date
+                  ? new Date(stats.peakDate.date).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "-"}
               </div>
               <div className="text-sm text-gray-600 mt-1">
-                Revenue: {formatCurrency(stats.peakDateRevenue || 0)}
+                Revenue: {formatCurrency(stats.peakDate?.revenue || 0)}
               </div>
             </div>
           </div>

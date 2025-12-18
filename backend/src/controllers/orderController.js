@@ -468,7 +468,11 @@ const getProfitReport = async (req, res) => {
     const { startDate, endDate, orderType } = req.query;
 
     // Build query filter for completed orders only
-    const query = { status: { $in: ["COMPLETED", "SHIPPED"] } };
+    const query = {
+      status: {
+        $in: ["payment_confirmed", "processing", "shipping", "completed"],
+      },
+    };
 
     if (startDate || endDate) {
       query.createdAt = {};
@@ -632,7 +636,11 @@ const getTrendAnalysisReport = async (req, res) => {
     const { startDate, endDate, groupBy = "day" } = req.query;
 
     // Build query filter for completed orders
-    const query = { status: { $in: ["COMPLETED", "SHIPPED"] } };
+    const query = {
+      status: {
+        $in: ["payment_confirmed", "processing", "shipping", "completed"],
+      },
+    };
 
     // Default to last 30 days if no date provided
     const end = endDate ? new Date(endDate) : new Date();
