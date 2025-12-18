@@ -121,25 +121,7 @@ const Dashboard = ({ data }) => {
         )}
       </div>
 
-      {/* Charts Placeholder */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 h-64">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Grafik Penjualan
-          </h3>
-          <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg">
-            <p className="text-gray-400">Chart placeholder</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 h-64">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Status Proyek
-          </h3>
-          <div className="flex items-center justify-center h-40 bg-gray-50 rounded-lg">
-            <p className="text-gray-400">Chart placeholder</p>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 };

@@ -38,6 +38,7 @@ const OrderManagement = () => {
   const [selectedPMId, setSelectedPMId] = useState("");
   const [filterByPM, setFilterByPM] = useState("");
   const [products, setProducts] = useState([]);
+  const [updatingDeliveryId, setUpdatingDeliveryId] = useState(null);
 
   // Fetch orders saat component mount
   useEffect(() => {
@@ -212,7 +213,7 @@ const OrderManagement = () => {
     }
   };
 
-  const filteredRABs = listRabs.filter((rab) => {
+  const filteredRABs = (listRabs || []).filter((rab) => {
     let matchStatus;
     if (filter === "all") {
       matchStatus = true;
@@ -286,7 +287,7 @@ const OrderManagement = () => {
 
   const handleSendQuotation = (rab) => {
     setSelectedRAB(rab);
-    const items = rab.items.map((item) => ({
+    const items = (rab.items || []).map((item) => ({
       materialName: item.materialName,
       quantity: item.quantity,
       unit: item.unit,
@@ -421,9 +422,11 @@ const OrderManagement = () => {
   };
 
   const updateDeliveryStatus = async (checkoutId) => {
+    if (updatingDeliveryId) return;
     console.log("=== UPDATE DELIVERY STATUS ===");
     console.log("Checkout ID:", checkoutId);
 
+    setUpdatingDeliveryId(checkoutId);
     try {
       const result = await dispatch(
         updateDeliveryStatusAction(checkoutId)
@@ -443,7 +446,24 @@ const OrderManagement = () => {
     } catch (error) {
       console.error("=== ERROR updating delivery status ===");
       console.error("Error details:", error);
-      alert(`Gagal update delivery status: ${error.message || error}`);
+
+      // Handle specific case where delivery is already completed
+      if (
+        error.message === "Delivery already completed. Cannot update further." ||
+        (error.response &&
+          error.response.data &&
+          error.response.data.message ===
+            "Delivery already completed. Cannot update further.")
+      ) {
+        alert(
+          "⚠️ Status pengiriman sudah selesai (sudah sampai). Data akan diperbarui."
+        );
+        await dispatch(actionOrder.fetchOrders()).unwrap();
+      } else {
+        alert(`Gagal update delivery status: ${error.message || error}`);
+      }
+    } finally {
+      setUpdatingDeliveryId(null);
     }
   };
 
@@ -573,13 +593,34 @@ const OrderManagement = () => {
       {activeTab === "orders" ? (
         // --- Existing Order Management UI ---
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6">
-          <div className="mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
-              Kelola Pesanan
-            </h3>
-            <p className="text-gray-600 text-sm sm:text-base">
-              Total {paidOrders.length} pesanan yang sudah dibayar
-            </p>
+          <div className="mb-6 flex justify-between items-start">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                Kelola Pesanan
+              </h3>
+              <p className="text-gray-600 text-sm sm:text-base">
+                Total {paidOrders.length} pesanan yang sudah dibayar
+              </p>
+            </div>
+            <button
+              onClick={() => dispatch(actionOrder.fetchOrders())}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Refresh Data
+            </button>
           </div>
 
           {paidOrders.length === 0 ? (
@@ -754,14 +795,48 @@ const OrderManagement = () => {
                         {order.checkoutId &&
                           order.checkoutId.delivery !== "sudah sampai" && (
                             <button
-                              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
+                              disabled={
+                                updatingDeliveryId === order.checkoutId._id
+                              }
+                              className={`px-4 py-2 rounded-md transition-colors duration-200 text-sm font-medium ${
+                                updatingDeliveryId === order.checkoutId._id
+                                  ? "bg-gray-400 cursor-not-allowed text-white"
+                                  : "bg-green-600 text-white hover:bg-green-700"
+                              }`}
                               onClick={() =>
                                 updateDeliveryStatus(order.checkoutId._id)
                               }
                             >
-                              {order.checkoutId.delivery === "belum dikirim"
-                                ? "📦 Mulai Kirim"
-                                : "✅ Tandai Sampai"}
+                              {updatingDeliveryId === order.checkoutId._id ? (
+                                <span className="flex items-center gap-2">
+                                  <svg
+                                    className="animate-spin h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                  </svg>
+                                  Processing...
+                                </span>
+                              ) : order.checkoutId.delivery ===
+                                "belum dikirim" ? (
+                                "📦 Mulai Kirim"
+                              ) : (
+                                "✅ Tandai Sampai"
+                              )}
                             </button>
                           )}
 
@@ -917,26 +992,21 @@ const OrderManagement = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {selectedOrder.items.map((item) => (
-                            <tr key={item.id}>
+                          {selectedOrder.checkoutId?.items?.map((item, idx) => (
+                            <tr key={item._id || idx}>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {item.product.name}
+                                  {item.productName}
                                 </div>
-                                {item.notes && (
-                                  <div className="text-sm text-gray-500 mt-1">
-                                    {item.notes}
-                                  </div>
-                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {item.quantity} {item.product.unit}
+                                {item.quantity} {item.unit}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatPrice(item.product.price)}
+                                {formatPrice(item.priceAtCheckout)}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {formatPrice(item.subtotal)}
+                                {formatPrice(item.priceAtCheckout * item.quantity)}
                               </td>
                             </tr>
                           ))}
@@ -950,7 +1020,7 @@ const OrderManagement = () => {
                               Total:
                             </td>
                             <td className="px-6 py-3 text-sm font-bold text-gray-900">
-                              {formatPrice(selectedOrder.total)}
+                              {formatPrice(selectedOrder.totalAmount)}
                             </td>
                           </tr>
                         </tfoot>
@@ -1027,8 +1097,8 @@ const OrderManagement = () => {
               className="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Semua Project Manager</option>
-              {projectManagers.map((pm) => {
-                const pmRabCount = listRabs.filter(
+              {projectManagers?.map((pm) => {
+                const pmRabCount = listRabs?.filter(
                   (rab) =>
                     rab.projectManagerId?._id === pm._id ||
                     rab.projectManagerId === pm._id
@@ -1117,7 +1187,7 @@ const OrderManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredRABs.map((rab) => (
+                    {filteredRABs?.map((rab) => (
                       <tr key={rab._id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div>
@@ -1278,7 +1348,7 @@ const OrderManagement = () => {
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           >
                             <option value="">Pilih Project Manager</option>
-                            {projectManagers.map((pm) => (
+                            {projectManagers?.map((pm) => (
                               <option key={pm._id} value={pm._id}>
                                 {pm.name} - {pm.email}
                               </option>
@@ -1348,7 +1418,7 @@ const OrderManagement = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedRAB.items.map((item, index) => {
+                            {selectedRAB.items?.map((item, index) => {
                               // Find matching product to get stock
                               const product = products.find(
                                 (p) =>

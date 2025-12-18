@@ -295,20 +295,7 @@ const AdminDashboard = ({ data }) => {
               </button>
             </li>
 
-            {/* Permintaan RAB Customer */}
-            <li>
-              <button
-                onClick={() => handleTabChange("rab-requests")}
-                className={`flex items-center w-full px-4 py-3 rounded-lg transition-all ${
-                  activeTab === "rab-requests"
-                    ? "bg-gray-700 text-white"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <span className="text-2xl mr-3"></span>
-                <span>Permintaan RAB Customer</span>
-              </button>
-            </li>
+
 
             {/* Laporan Penjualan */}
             <li>
@@ -320,7 +307,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">📊</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Laporan Penjualan</span>
               </button>
             </li>
@@ -335,7 +322,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">💰</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Laporan Pembayaran</span>
               </button>
             </li>
@@ -350,7 +337,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">📦</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Laporan Barang Masuk</span>
               </button>
             </li>
@@ -365,7 +352,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">📤</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Laporan Barang Keluar</span>
               </button>
             </li>
@@ -380,7 +367,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">🏆</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Barang Paling Laris</span>
               </button>
             </li>
@@ -395,7 +382,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">👑</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Customer Paling Loyal</span>
               </button>
             </li>
@@ -410,7 +397,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">⚠️</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Stok Menipis</span>
               </button>
             </li>
@@ -425,7 +412,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">💰</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Laporan Keuntungan</span>
               </button>
             </li>
@@ -440,7 +427,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">📈</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Analisis Trend</span>
               </button>
             </li>
@@ -455,7 +442,7 @@ const AdminDashboard = ({ data }) => {
                     : "text-gray-300 hover:bg-gray-700 hover:text-white"
                 }`}
               >
-                <span className="text-2xl mr-3">👥</span>
+                <span className="text-2xl mr-3"></span>
                 <span>Aktivitas User</span>
               </button>
             </li>
