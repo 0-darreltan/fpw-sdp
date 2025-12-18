@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionOrder } from "../../features/order/orderSlice";
+import { actionOrder } from "../../../features/order/orderSlice";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,7 +14,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { Bar, Pie, Line } from "react-chartjs-2";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 
 // Register ChartJS components
 ChartJS.register(
@@ -30,19 +30,18 @@ ChartJS.register(
   Filler
 );
 
-const BestSellerReport = () => {
+const CustomerLoyaltyReport = () => {
   const dispatch = useDispatch();
-  const { outgoingInventory: reportData, loading, error } = useSelector(
+  const { customerLoyalty: reportData, loading, error } = useSelector(
     (state) => state.order
   );
 
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
-    orderType: "",
   });
 
-  const [viewMode, setViewMode] = useState("quantity"); // quantity or revenue
+  const [viewMode, setViewMode] = useState("spending"); // spending or frequency
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("id-ID", {
@@ -52,8 +51,16 @@ const BestSellerReport = () => {
     }).format(value);
   };
 
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString("id-ID", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   useEffect(() => {
-    dispatch(actionOrder.fetchOutgoingInventory({}));
+    dispatch(actionOrder.fetchCustomerLoyalty({}));
   }, [dispatch]);
 
   const handleFilterChange = (e) => {
@@ -68,36 +75,35 @@ const BestSellerReport = () => {
     const queryParams = {};
     if (filters.startDate) queryParams.startDate = filters.startDate;
     if (filters.endDate) queryParams.endDate = filters.endDate;
-    if (filters.orderType) queryParams.orderType = filters.orderType;
 
-    dispatch(actionOrder.fetchOutgoingInventory(queryParams));
+    dispatch(actionOrder.fetchCustomerLoyalty(queryParams));
   };
 
   const handleResetFilters = () => {
     setFilters({
       startDate: "",
       endDate: "",
-      orderType: "",
     });
-    dispatch(actionOrder.fetchOutgoingInventory({}));
+    dispatch(actionOrder.fetchCustomerLoyalty({}));
   };
 
-  // Get top products
-  const topProducts = reportData?.products?.slice(0, 20) || [];
-  const top5Products = topProducts.slice(0, 5);
+  // Get customer data
+  const customers = reportData?.customers || [];
+  const stats = reportData?.stats || {};
+  const top10Customers = customers.slice(0, 10);
+  const top5Customers = customers.slice(0, 5);
 
   // Bar chart - Top 10 by selected view mode
-  const top10ByView = topProducts.slice(0, 10);
   const barChartData = {
-    labels: top10ByView.map((p) => p.productName),
+    labels: top10Customers.map((c) => c.customerName),
     datasets: [
       {
-        label: viewMode === "quantity" ? "Quantity Terjual" : "Revenue",
-        data: top10ByView.map((p) =>
-          viewMode === "quantity" ? p.totalQuantity : p.totalRevenue
+        label: viewMode === "spending" ? "Total Spent" : "Total Orders",
+        data: top10Customers.map((c) =>
+          viewMode === "spending" ? c.totalSpent : c.totalOrders
         ),
-        backgroundColor: "rgba(59, 130, 246, 0.8)",
-        borderColor: "rgba(59, 130, 246, 1)",
+        backgroundColor: "rgba(34, 197, 94, 0.8)",
+        borderColor: "rgba(34, 197, 94, 1)",
         borderWidth: 2,
       },
     ],
@@ -106,14 +112,15 @@ const BestSellerReport = () => {
   const barOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis: "y",
     plugins: {
       legend: {
         position: "top",
       },
       title: {
         display: true,
-        text: `Top 10 Produk Terlaris by ${
-          viewMode === "quantity" ? "Quantity" : "Revenue"
+        text: `Top 10 Loyal Customers by ${
+          viewMode === "spending" ? "Spending" : "Order Frequency"
         }`,
         font: {
           size: 16,
@@ -123,38 +130,38 @@ const BestSellerReport = () => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            if (viewMode === "revenue") {
-              return formatCurrency(context.parsed.y);
+            if (viewMode === "spending") {
+              return formatCurrency(context.parsed.x);
             }
-            return `${context.parsed.y} unit`;
+            return `${context.parsed.x} orders`;
           },
         },
       },
     },
     scales: {
-      y: {
+      x: {
         beginAtZero: true,
       },
     },
   };
 
-  // Pie chart - Top 5 market share by revenue
-  const pieChartData = {
-    labels: top5Products.map((p) => p.productName),
+  // Doughnut chart - Top 5 revenue share
+  const doughnutChartData = {
+    labels: top5Customers.map((c) => c.customerName),
     datasets: [
       {
         label: "Revenue Share",
-        data: top5Products.map((p) => p.totalRevenue),
+        data: top5Customers.map((c) => c.totalSpent),
         backgroundColor: [
+          "rgba(34, 197, 94, 0.8)",
           "rgba(59, 130, 246, 0.8)",
-          "rgba(16, 185, 129, 0.8)",
           "rgba(245, 158, 11, 0.8)",
           "rgba(239, 68, 68, 0.8)",
           "rgba(139, 92, 246, 0.8)",
         ],
         borderColor: [
+          "rgba(34, 197, 94, 1)",
           "rgba(59, 130, 246, 1)",
-          "rgba(16, 185, 129, 1)",
           "rgba(245, 158, 11, 1)",
           "rgba(239, 68, 68, 1)",
           "rgba(139, 92, 246, 1)",
@@ -164,7 +171,7 @@ const BestSellerReport = () => {
     ],
   };
 
-  const pieOptions = {
+  const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -173,7 +180,7 @@ const BestSellerReport = () => {
       },
       title: {
         display: true,
-        text: "Top 5 Revenue Share",
+        text: "Top 5 Revenue Contribution",
         font: {
           size: 16,
           weight: "bold",
@@ -191,13 +198,13 @@ const BestSellerReport = () => {
     },
   };
 
-  // Line chart - Quantity vs Revenue trend for top 5
+  // Line chart - Orders vs Spending for top 5
   const lineChartData = {
-    labels: top5Products.map((p) => p.productName),
+    labels: top5Customers.map((c) => c.customerName),
     datasets: [
       {
-        label: "Quantity Terjual",
-        data: top5Products.map((p) => p.totalQuantity),
+        label: "Total Orders",
+        data: top5Customers.map((c) => c.totalOrders),
         borderColor: "rgba(59, 130, 246, 1)",
         backgroundColor: "rgba(59, 130, 246, 0.2)",
         yAxisID: "y",
@@ -205,10 +212,10 @@ const BestSellerReport = () => {
         fill: true,
       },
       {
-        label: "Revenue (dalam jutaan)",
-        data: top5Products.map((p) => p.totalRevenue / 1000000),
-        borderColor: "rgba(16, 185, 129, 1)",
-        backgroundColor: "rgba(16, 185, 129, 0.2)",
+        label: "Spending (dalam jutaan)",
+        data: top5Customers.map((c) => c.totalSpent / 1000000),
+        borderColor: "rgba(34, 197, 94, 1)",
+        backgroundColor: "rgba(34, 197, 94, 0.2)",
         yAxisID: "y1",
         tension: 0.4,
         fill: true,
@@ -229,7 +236,7 @@ const BestSellerReport = () => {
       },
       title: {
         display: true,
-        text: "Top 5 - Quantity vs Revenue",
+        text: "Top 5 - Orders vs Spending",
         font: {
           size: 16,
           weight: "bold",
@@ -243,7 +250,7 @@ const BestSellerReport = () => {
         position: "left",
         title: {
           display: true,
-          text: "Quantity",
+          text: "Total Orders",
         },
       },
       y1: {
@@ -252,7 +259,7 @@ const BestSellerReport = () => {
         position: "right",
         title: {
           display: true,
-          text: "Revenue (Juta Rp)",
+          text: "Spending (Juta Rp)",
         },
         grid: {
           drawOnChartArea: false,
@@ -265,8 +272,8 @@ const BestSellerReport = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat laporan best seller...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat laporan loyalitas customer...</p>
         </div>
       </div>
     );
@@ -288,17 +295,17 @@ const BestSellerReport = () => {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800">
-            Laporan Barang Paling Laris
+            Laporan Customer Paling Loyal
           </h1>
           <p className="text-gray-600 mt-2">
-            Analisis produk terlaris berdasarkan penjualan dan revenue
+            Analisis pelanggan berdasarkan pembelian dan frekuensi transaksi
           </p>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Filter</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tanggal Mulai
@@ -308,7 +315,7 @@ const BestSellerReport = () => {
                 name="startDate"
                 value={filters.startDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
             <div>
@@ -320,28 +327,13 @@ const BestSellerReport = () => {
                 name="endDate"
                 value={filters.endDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipe Order
-              </label>
-              <select
-                name="orderType"
-                value={filters.orderType}
-                onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Semua</option>
-                <option value="MATERIAL_PURCHASE">Material Purchase</option>
-                <option value="PROJECT">Project</option>
-              </select>
             </div>
             <div className="flex items-end gap-2">
               <button
                 onClick={handleApplyFilters}
-                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
               >
                 Terapkan
               </button>
@@ -355,11 +347,58 @@ const BestSellerReport = () => {
           </div>
         </div>
 
-        {/* Top 3 Products - Podium Style */}
-        {topProducts.length >= 3 && (
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90">Total Customers</p>
+                <p className="text-3xl font-bold mt-2">{stats.totalCustomers || 0}</p>
+              </div>
+              <div className="text-5xl opacity-80">👥</div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90">Total Orders</p>
+                <p className="text-3xl font-bold mt-2">{stats.totalOrders || 0}</p>
+              </div>
+              <div className="text-5xl opacity-80">📋</div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90">Total Revenue</p>
+                <p className="text-2xl font-bold mt-2">
+                  {formatCurrency(stats.totalRevenue || 0)}
+                </p>
+              </div>
+              <div className="text-5xl opacity-80">💰</div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90">Avg per Customer</p>
+                <p className="text-xl font-bold mt-2">
+                  {formatCurrency(stats.averageSpentPerCustomer || 0)}
+                </p>
+              </div>
+              <div className="text-5xl opacity-80">📊</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Top 3 Customers - Podium Style */}
+        {customers.length >= 3 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              🏆 Top 3 Best Sellers
+              🏆 Top 3 Most Loyal Customers
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* 2nd Place */}
@@ -367,20 +406,21 @@ const BestSellerReport = () => {
                 <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-6 text-center transform hover:scale-105 transition-transform">
                   <div className="text-6xl mb-3">🥈</div>
                   <div className="text-sm text-gray-600 mb-1">2nd Place</div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-3 min-h-[3rem]">
-                    {topProducts[1].productName}
+                  <h3 className="text-lg font-bold text-gray-800 mb-2 min-h-[3rem] flex items-center justify-center">
+                    {customers[1].customerName}
                   </h3>
+                  <p className="text-xs text-gray-600 mb-3">{customers[1].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Terjual</p>
-                      <p className="text-xl font-bold text-gray-800">
-                        {topProducts[1].totalQuantity} {topProducts[1].unit}
+                      <p className="text-xs text-gray-600">Total Spent</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        {formatCurrency(customers[1].totalSpent)}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Revenue</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        {formatCurrency(topProducts[1].totalRevenue)}
+                      <p className="text-xs text-gray-600">Orders</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {customers[1].totalOrders}
                       </p>
                     </div>
                   </div>
@@ -392,28 +432,29 @@ const BestSellerReport = () => {
                 <div className="bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-lg p-6 text-center transform md:scale-110 hover:scale-115 transition-transform shadow-xl">
                   <div className="text-7xl mb-3">🥇</div>
                   <div className="text-sm text-gray-800 mb-1 font-semibold">
-                    1st Place - Champion!
+                    1st Place - VIP Customer!
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3 min-h-[3rem]">
-                    {topProducts[0].productName}
+                  <h3 className="text-xl font-bold text-gray-900 mb-2 min-h-[3rem] flex items-center justify-center">
+                    {customers[0].customerName}
                   </h3>
+                  <p className="text-xs text-gray-800 mb-3">{customers[0].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-3">
-                      <p className="text-xs text-gray-600">Terjual</p>
-                      <p className="text-2xl font-bold text-yellow-700">
-                        {topProducts[0].totalQuantity} {topProducts[0].unit}
+                      <p className="text-xs text-gray-600">Total Spent</p>
+                      <p className="text-xl font-bold text-yellow-700">
+                        {formatCurrency(customers[0].totalSpent)}
                       </p>
                     </div>
                     <div className="bg-white rounded p-3">
-                      <p className="text-xs text-gray-600">Revenue</p>
-                      <p className="text-xl font-bold text-yellow-700">
-                        {formatCurrency(topProducts[0].totalRevenue)}
+                      <p className="text-xs text-gray-600">Orders</p>
+                      <p className="text-2xl font-bold text-yellow-700">
+                        {customers[0].totalOrders}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Orders</p>
+                      <p className="text-xs text-gray-600">Avg/Order</p>
                       <p className="text-lg font-semibold text-gray-700">
-                        {topProducts[0].orderCount} order
+                        {formatCurrency(customers[0].averageOrderValue)}
                       </p>
                     </div>
                   </div>
@@ -425,20 +466,21 @@ const BestSellerReport = () => {
                 <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-6 text-center transform hover:scale-105 transition-transform">
                   <div className="text-6xl mb-3">🥉</div>
                   <div className="text-sm text-gray-600 mb-1">3rd Place</div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-3 min-h-[3rem]">
-                    {topProducts[2].productName}
+                  <h3 className="text-lg font-bold text-gray-800 mb-2 min-h-[3rem] flex items-center justify-center">
+                    {customers[2].customerName}
                   </h3>
+                  <p className="text-xs text-gray-600 mb-3">{customers[2].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Terjual</p>
-                      <p className="text-xl font-bold text-gray-800">
-                        {topProducts[2].totalQuantity} {topProducts[2].unit}
+                      <p className="text-xs text-gray-600">Total Spent</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        {formatCurrency(customers[2].totalSpent)}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Revenue</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        {formatCurrency(topProducts[2].totalRevenue)}
+                      <p className="text-xs text-gray-600">Orders</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {customers[2].totalOrders}
                       </p>
                     </div>
                   </div>
@@ -456,24 +498,24 @@ const BestSellerReport = () => {
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewMode("quantity")}
+                onClick={() => setViewMode("spending")}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  viewMode === "quantity"
-                    ? "bg-blue-600 text-white"
+                  viewMode === "spending"
+                    ? "bg-green-600 text-white"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
-                By Quantity
+                By Spending
               </button>
               <button
-                onClick={() => setViewMode("revenue")}
+                onClick={() => setViewMode("frequency")}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  viewMode === "revenue"
-                    ? "bg-blue-600 text-white"
+                  viewMode === "frequency"
+                    ? "bg-green-600 text-white"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
-                By Revenue
+                By Frequency
               </button>
             </div>
           </div>
@@ -488,10 +530,10 @@ const BestSellerReport = () => {
             </div>
           </div>
 
-          {/* Pie Chart */}
+          {/* Doughnut Chart */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div style={{ height: "400px" }}>
-              <Pie data={pieChartData} options={pieOptions} />
+              <Doughnut data={doughnutChartData} options={doughnutOptions} />
             </div>
           </div>
         </div>
@@ -506,7 +548,7 @@ const BestSellerReport = () => {
         {/* Detailed Table */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">
-            Ranking Detail Produk
+            Detail Customer Loyalty
           </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -516,28 +558,30 @@ const BestSellerReport = () => {
                     Rank
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Produk
+                    Customer
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Qty Terjual
+                    Contact
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Orders
+                    Total Orders
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Revenue
+                    Total Spent
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Avg/Order
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer Since
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {topProducts.map((product, index) => {
-                  const avgPerOrder = product.totalRevenue / product.orderCount;
+                {customers.map((customer, index) => {
                   return (
                     <tr
-                      key={product.productId}
+                      key={customer.customerId}
                       className={`hover:bg-gray-50 ${
                         index < 3 ? "bg-yellow-50" : ""
                       }`}
@@ -559,27 +603,41 @@ const BestSellerReport = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {product.productName}
+                          {customer.customerName}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-blue-600">
-                          {product.totalQuantity} {product.unit}
+                        <div className="text-xs text-gray-500">
+                          {customer.customerEmail}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {product.orderCount}
+                          {customer.customerPhone || "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-blue-600">
+                          {customer.totalOrders}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {customer.totalItems} items
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-bold text-green-600">
-                          {formatCurrency(product.totalRevenue)}
+                          {formatCurrency(customer.totalSpent)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-600">
-                          {formatCurrency(avgPerOrder)}
+                          {formatCurrency(customer.averageOrderValue)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {formatDate(customer.firstOrderDate)}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {customer.customerLifetimeDays} days
                         </div>
                       </td>
                     </tr>
@@ -594,4 +652,4 @@ const BestSellerReport = () => {
   );
 };
 
-export default BestSellerReport;
+export default CustomerLoyaltyReport;

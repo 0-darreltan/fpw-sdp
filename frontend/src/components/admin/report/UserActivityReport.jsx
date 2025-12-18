@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionUser } from "../../features/users/userSlice";
+import { actionUser } from "../../../features/users/userSlice";
 import {
   Chart as ChartJS,
   CategoryScale,

@@ -8,16 +8,16 @@ import MaterialManagement from "../../components/admin/MaterialManagement";
 import OrderManagement from "../../components/admin/OrderManagement";
 import MaterialRequestManagement from "../../components/admin/MaterialRequestManagement";
 import RABRequestManagement from "../../components/admin/RABRequestManagement";
-import SalesReport from "../../components/admin/SalesReport";
-import PaymentReport from "../../components/admin/PaymentReport";
-import InventoryReport from "../../components/admin/InventoryReport";
-import OutgoingInventoryReport from "../../components/admin/OutgoingInventoryReport";
-import BestSellerReport from "../../components/admin/BestSellerReport";
-import CustomerLoyaltyReport from "../../components/admin/CustomerLoyaltyReport";
-import LowStockReport from "../../components/admin/LowStockReport";
-import ProfitReport from "../../components/admin/ProfitReport";
-import TrendAnalysisReport from "../../components/admin/TrendAnalysisReport";
-import UserActivityReport from "../../components/admin/UserActivityReport";
+import SalesReport from "../../components/admin/report/SalesReport";
+import PaymentReport from "../../components/admin/report/PaymentReport";
+import InventoryReport from "../../components/admin/report/InventoryReport";
+import OutgoingInventoryReport from "../../components/admin/report/OutgoingInventoryReport";
+import BestSellerReport from "../../components/admin/report/BestSellerReport";
+import CustomerLoyaltyReport from "../../components/admin/report/CustomerLoyaltyReport";
+import LowStockReport from "../../components/admin/report/LowStockReport";
+import ProfitReport from "../../components/admin/report/ProfitReport";
+import TrendAnalysisReport from "../../components/admin/report/TrendAnalysisReport";
+import UserActivityReport from "../../components/admin/report/UserActivityReport";
 
 const AdminDashboard = ({ data }) => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -59,7 +59,7 @@ const AdminDashboard = ({ data }) => {
         return <Dashboard data={data} />;
 
       case "orders":
-        return <OrderManagement orders={data?.orders || []} />;
+        return <OrderManagement />;
 
       case "users":
         return <UserManagement users={data?.users || []} />;

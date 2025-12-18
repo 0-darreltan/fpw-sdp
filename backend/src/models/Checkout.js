@@ -82,6 +82,12 @@ const CheckoutSchema = new Schema(
       enum: ["pending", "paid", "failed", "expired"],
       default: "pending",
     },
+    // Status delivery untuk material purchase
+    delivery: {
+      type: String,
+      enum: ["belum dikirim", "sedang dikirim", "sudah sampai"],
+      default: "belum dikirim",
+    },
     // Optional storage for Midtrans/Snap transaction metadata
     midtrans: {
       token: { type: String },
@@ -98,5 +104,13 @@ CheckoutSchema.path("rabId").validate(function (value) {
   }
   return true; // Boleh null jika tipe-nya bukan PROJECT
 }, "RAB ID is required for PROJECT type orders.");
+
+// Validasi kustom: Field delivery hanya relevan untuk MATERIAL_PURCHASE
+CheckoutSchema.path("delivery").validate(function (value) {
+  if (this.orderType === "PROJECT" && value !== "belum dikirim") {
+    return false; // Untuk PROJECT, delivery harus default
+  }
+  return true;
+}, "Delivery status is only applicable for MATERIAL_PURCHASE orders.");
 
 module.exports = mongoose.model("Checkout", CheckoutSchema);

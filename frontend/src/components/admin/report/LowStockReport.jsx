@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionProduct } from "../../features/product/productSlice";
+import { actionProduct } from "../../../features/product/productSlice";
 import {
   Chart as ChartJS,
   CategoryScale,

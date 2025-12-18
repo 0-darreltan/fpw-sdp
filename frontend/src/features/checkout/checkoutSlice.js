@@ -51,6 +51,21 @@ export const updateCheckoutStatus = createAsyncThunk(
   }
 );
 
+// Async thunk to update delivery status
+export const updateDeliveryStatus = createAsyncThunk(
+  "checkout/updateDeliveryStatus",
+  async (checkoutId, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`/checkout/delivery/${checkoutId}`);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data || { message: err.message || "Network error" }
+      );
+    }
+  }
+);
+
 const initialState = {
   loading: false,
   error: null,
@@ -60,6 +75,8 @@ const initialState = {
   historyError: null,
   updateLoading: false,
   updateError: null,
+  deliveryUpdateLoading: false,
+  deliveryUpdateError: null,
 };
 
 const checkoutSlice = createSlice({
@@ -119,6 +136,26 @@ const checkoutSlice = createSlice({
       .addCase(updateCheckoutStatus.rejected, (state, action) => {
         state.updateLoading = false;
         state.updateError = action.payload?.message || action.error?.message || "Failed to update status";
+      })
+      // updateDeliveryStatus
+      .addCase(updateDeliveryStatus.pending, (state) => {
+        state.deliveryUpdateLoading = true;
+        state.deliveryUpdateError = null;
+      })
+      .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+        state.deliveryUpdateLoading = false;
+        // Update checkout in history if exists
+        const updatedCheckout = action.payload?.data;
+        if (updatedCheckout && updatedCheckout.checkoutId) {
+          const index = state.history.findIndex(c => c._id === updatedCheckout.checkoutId);
+          if (index !== -1) {
+            state.history[index].delivery = updatedCheckout.currentStatus;
+          }
+        }
+      })
+      .addCase(updateDeliveryStatus.rejected, (state, action) => {
+        state.deliveryUpdateLoading = false;
+        state.deliveryUpdateError = action.payload?.message || action.error?.message || "Failed to update delivery status";
       });
   },
 });

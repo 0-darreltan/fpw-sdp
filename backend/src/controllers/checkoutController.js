@@ -458,9 +458,86 @@ const updateCheckoutStatus = async (req, res) => {
   }
 };
 
+/**
+ * ✅ Update Delivery Status
+ * Update status pengiriman checkout secara otomatis ke status berikutnya
+ * belum dikirim → sedang dikirim → sudah sampai
+ */
+const updateDeliveryStatus = async (req, res) => {
+  try {
+    const { checkoutId } = req.params;
+
+    // Cari checkout
+    const checkout = await Checkout.findById(checkoutId);
+
+    if (!checkout) {
+      return res.status(404).json({
+        success: false,
+        message: "Checkout not found.",
+      });
+    }
+
+    // Validasi: Hanya checkout yang sudah dibayar yang bisa diupdate delivery statusnya
+    if (checkout.paymentStatus !== "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update delivery status for unpaid checkout.",
+      });
+    }
+
+    // Tentukan status berikutnya secara otomatis
+    let newDeliveryStatus;
+    let message;
+
+    switch (checkout.delivery) {
+      case "belum dikirim":
+        newDeliveryStatus = "sedang dikirim";
+        message = "Status delivery updated to 'sedang dikirim'.";
+        break;
+      case "sedang dikirim":
+        newDeliveryStatus = "sudah sampai";
+        message = "Status delivery updated to 'sudah sampai'.";
+        break;
+      case "sudah sampai":
+        return res.status(400).json({
+          success: false,
+          message: "Delivery already completed. Cannot update further.",
+        });
+      default:
+        newDeliveryStatus = "belum dikirim";
+        message = "Status delivery reset to 'belum dikirim'.";
+    }
+
+    // Update status delivery
+    checkout.delivery = newDeliveryStatus;
+    await checkout.save();
+
+    // Update order status jika barang sudah sampai
+    const order = await Order.findOne({ checkoutId: checkout._id });
+    if (order && newDeliveryStatus === "sudah sampai") {
+      order.status = "delivered";
+      await order.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: message,
+      data: {
+        checkoutId: checkout._id,
+        previousStatus: checkout.delivery === "sudah sampai" ? "sedang dikirim" : checkout.delivery === "sedang dikirim" ? "belum dikirim" : null,
+        currentStatus: newDeliveryStatus,
+      },
+    });
+  } catch (error) {
+    console.error("Update Delivery Status Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   initiatePayment,
   handleMidtransNotification,
   getCheckoutHistory,
   updateCheckoutStatus,
+  updateDeliveryStatus,
 };

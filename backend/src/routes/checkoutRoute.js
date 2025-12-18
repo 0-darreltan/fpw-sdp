@@ -5,6 +5,7 @@ const {
   handleMidtransNotification,
   getCheckoutHistory,
   updateCheckoutStatus,
+  updateDeliveryStatus,
 } = require("../controllers/checkoutController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
@@ -17,6 +18,9 @@ router.get("/history", authMiddleware, getCheckoutHistory);
 
 // Route untuk update status checkout dari frontend (setelah callback Midtrans)
 router.patch("/status/:checkoutId", authMiddleware, updateCheckoutStatus);
+
+// Route untuk update delivery status
+router.patch("/delivery/:checkoutId", authMiddleware, updateDeliveryStatus);
 
 // Route untuk webhook dari Midtrans
 // TIDAK memerlukan authMiddleware karena ini adalah komunikasi server-to-server

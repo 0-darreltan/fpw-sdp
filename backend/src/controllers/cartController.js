@@ -27,19 +27,11 @@ const upsertItemInCart = async (req, res) => {
   try {
     const { productId, quantity, replaceQuantity } = req.body;
     const userId = req.user.id;
-
     // Validasi input
     if (!productId || !quantity) {
       return res.status(400).json({
         success: false,
         message: "ProductId and quantity are required.",
-      });
-    }
-
-    if (quantity < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Quantity must be at least 1.",
       });
     }
 

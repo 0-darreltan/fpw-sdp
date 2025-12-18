@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionOrder } from "../../features/order/orderSlice";
+import { actionOrder } from "../../../features/order/orderSlice";
 import {
   Chart as ChartJS,
   CategoryScale,

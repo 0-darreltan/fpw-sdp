@@ -4,13 +4,15 @@ const {
   updateOrderSchema,
 } = require("../validations/orderValidation");
 
-// ✅ Get semua order (dengan populate user & sorting)
+// ✅ Get semua order (dengan populate user & checkout & sorting)
 const getOrder = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("customerId", "name email role")
+      .populate("checkoutId")
       .sort({ createdAt: -1 });
 
+    console.log(orders);
     return res.status(200).json({ success: true, data: orders });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

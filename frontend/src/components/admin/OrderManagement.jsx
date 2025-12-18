@@ -5,15 +5,25 @@ import {
   assignRABToMe,
   sendRABQuotation,
 } from "../../features/RAB/rabSlice";
+import { updateDeliveryStatus as updateDeliveryStatusAction } from "../../features/checkout/checkoutSlice";
+import { actionOrder } from "../../features/order/orderSlice";
 
-const OrderManagement = ({ orders, onUpdateOrder }) => {
+const OrderManagement = () => {
   const [activeTab, setActiveTab] = useState("orders"); // 'orders' or 'rab'
 
   // --- RAB Management State & Logic ---
   const dispatch = useDispatch();
   const { listRabs, loading } = useSelector((state) => state.rab);
   const { currUsers } = useSelector((state) => state.users);
+  const {
+    listOrders,
+    loading: ordersLoading,
+    error: ordersError,
+  } = useSelector((state) => state.order);
   const user = currUsers?.user;
+
+  // Use listOrders from Redux state
+  const orders = listOrders || [];
 
   const [filter, setFilter] = useState("all");
   const [selectedRAB, setSelectedRAB] = useState(null);
@@ -29,11 +39,30 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
   const [filterByPM, setFilterByPM] = useState("");
   const [products, setProducts] = useState([]);
 
+  // Fetch orders saat component mount
+  useEffect(() => {
+    console.log("=== FETCHING ORDERS ===");
+    dispatch(actionOrder.fetchOrders());
+  }, [dispatch]);
+
+  // Log untuk tracking data orders
+  useEffect(() => {
+    console.log("=== ORDER MANAGEMENT - Orders State ===");
+    console.log("Total orders received:", orders?.length || 0);
+    console.log("Orders loading:", ordersLoading);
+    console.log("Orders error:", ordersError);
+    console.log("Orders data:", orders);
+  }, [orders, ordersLoading, ordersError]);
+
   useEffect(() => {
     if (activeTab === "rab") {
       dispatch(fetchRabs());
       fetchProjectManagers();
       fetchProducts();
+    } else if (activeTab === "orders") {
+      // Refresh orders ketika tab orders dibuka
+      console.log("=== TAB ORDERS ACTIVE - Refreshing orders ===");
+      dispatch(actionOrder.fetchOrders());
     }
   }, [dispatch, activeTab]);
 
@@ -106,7 +135,7 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
 
   const handleRejectByPM = async (rabId) => {
     const reason = prompt("Masukkan alasan penolakan RAB:");
-    
+
     if (!reason) {
       alert("Alasan penolakan harus diisi!");
       return;
@@ -192,27 +221,38 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
     } else {
       matchStatus = rab.status === filter;
     }
-    
-    const matchPM = !filterByPM || 
-      (rab.projectManagerId && 
-       (rab.projectManagerId._id === filterByPM || rab.projectManagerId === filterByPM));
-    
+
+    const matchPM =
+      !filterByPM ||
+      (rab.projectManagerId &&
+        (rab.projectManagerId._id === filterByPM ||
+          rab.projectManagerId === filterByPM));
+
     return matchStatus && matchPM;
   });
 
   const getRABStatusBadge = (status) => {
     const config = {
       pending: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
-      reviewed: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
+      reviewed: {
+        label: "Dalam Review PM",
+        class: "bg-blue-100 text-blue-800",
+      },
       quoted: { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" },
       accepted: {
         label: "Diterima Customer",
         class: "bg-green-100 text-green-800",
       },
       rejected: { label: "Ditolak Customer", class: "bg-red-100 text-red-800" },
-      rejected_by_pm: { label: "Ditolak PM", class: "bg-orange-100 text-orange-800" },
+      rejected_by_pm: {
+        label: "Ditolak PM",
+        class: "bg-orange-100 text-orange-800",
+      },
     };
-    const { label, class: className } = config[status] || { label: "Dalam Review PM", class: "bg-blue-100 text-blue-800" };
+    const { label, class: className } = config[status] || {
+      label: "Dalam Review PM",
+      class: "bg-blue-100 text-blue-800",
+    };
     return (
       <span
         className={`px-3 py-1 rounded-full text-xs font-medium ${className}`}
@@ -380,9 +420,112 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
     }
   };
 
+  const updateDeliveryStatus = async (checkoutId) => {
+    console.log("=== UPDATE DELIVERY STATUS ===");
+    console.log("Checkout ID:", checkoutId);
+
+    try {
+      const result = await dispatch(
+        updateDeliveryStatusAction(checkoutId)
+      ).unwrap();
+
+      console.log("Update delivery result:", result);
+
+      if (result.success) {
+        alert(
+          `✅ Status delivery berhasil diupdate menjadi: ${result.data.currentStatus}`
+        );
+        console.log("Refreshing orders from backend...");
+        // Refresh orders dari backend
+        await dispatch(actionOrder.fetchOrders()).unwrap();
+        console.log("Orders refreshed successfully");
+      }
+    } catch (error) {
+      console.error("=== ERROR updating delivery status ===");
+      console.error("Error details:", error);
+      alert(`Gagal update delivery status: ${error.message || error}`);
+    }
+  };
+
+  const getDeliveryStatusBadge = (deliveryStatus) => {
+    const statusConfig = {
+      "belum dikirim": {
+        label: "Belum Dikirim",
+        class: "bg-gray-100 text-gray-800",
+      },
+      "sedang dikirim": {
+        label: "Sedang Dikirim",
+        class: "bg-blue-100 text-blue-800",
+      },
+      "sudah sampai": {
+        label: "Sudah Sampai",
+        class: "bg-green-100 text-green-800",
+      },
+    };
+
+    const config = statusConfig[deliveryStatus] || {
+      label: deliveryStatus || "N/A",
+      class: "bg-gray-100 text-gray-800",
+    };
+
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-medium ${config.class}`}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
   const filteredOrders = orders.filter(
     (order) => filterStatus === "all" || order.status === filterStatus
   );
+
+  console.log("=== FILTERED ORDERS ===");
+  console.log("Filter status:", filterStatus);
+  console.log("Filtered orders count:", filteredOrders.length);
+  console.log("Filtered orders:", filteredOrders);
+
+  // Filter untuk hanya menampilkan order yang sudah dibayar (payment_confirmed)
+  const paidOrders = filteredOrders.filter(
+    (order) => order.status === "payment_confirmed" && order.checkoutId
+  );
+
+  console.log("=== PAID ORDERS ===");
+  console.log("Paid orders count:", paidOrders.length);
+  console.log("Paid orders:", paidOrders);
+  paidOrders.forEach((order, index) => {
+    console.log(`Order ${index + 1}:`, {
+      id: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      checkoutId: order.checkoutId?._id,
+      deliveryStatus: order.checkoutId?.delivery,
+      paymentStatus: order.checkoutId?.paymentStatus,
+      customerId: order.customerId?._id,
+      customerName: order.customerId?.name,
+      totalAmount: order.totalAmount,
+      orderType: order.orderType,
+    });
+  });
+
+  console.log("=== PAID ORDERS ===");
+  console.log("Paid orders count:", paidOrders.length);
+  console.log("Paid orders:", paidOrders);
+  paidOrders.forEach((order, index) => {
+    console.log(`Order ${index + 1}:`, {
+      id: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      checkoutId: order.checkoutId?._id,
+      deliveryStatus: order.checkoutId?.delivery,
+      paymentStatus: order.checkoutId?.paymentStatus,
+      customerId: order.customerId?._id,
+      customerName: order.customerId?.name,
+      totalAmount: order.totalAmount,
+      orderType: order.orderType,
+    });
+  });
 
   const getStatusCounts = () => {
     const counts = {
@@ -435,19 +578,19 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
               Kelola Pesanan
             </h3>
             <p className="text-gray-600 text-sm sm:text-base">
-              Total {orders.length} pesanan masuk
+              Total {paidOrders.length} pesanan yang sudah dibayar
             </p>
           </div>
 
-          {orders.length === 0 ? (
+          {paidOrders.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📋</div>
               <h4 className="text-xl font-semibold text-gray-900 mb-2">
                 Belum Ada Pesanan
               </h4>
               <p className="text-gray-600 max-w-md mx-auto">
-                Pesanan dari customer dan permintaan material dari project manager
-                akan muncul di sini.
+                Pesanan dari customer dan permintaan material dari project
+                manager akan muncul di sini.
               </p>
             </div>
           ) : (
@@ -516,7 +659,7 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
               </div>
 
               <div className="space-y-4">
-                {filteredOrders.map((order) => (
+                {paidOrders.map((order) => (
                   <div
                     key={order.id}
                     className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow duration-200"
@@ -525,93 +668,77 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                       <div className="flex-1">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                           <div className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full w-fit">
-                            {getOrderType(order)}
+                            Order #{order.orderNumber || order._id}
                           </div>
                           <h4 className="text-lg font-semibold text-gray-900">
-                            {order.projectName}
+                            {order.orderType === "PROJECT"
+                              ? "Pesanan Project"
+                              : "Pembelian Material"}
                           </h4>
-                          {getStatusBadge(order.status)}
+                          {order.checkoutId &&
+                            getDeliveryStatusBadge(order.checkoutId.delivery)}
                         </div>
 
                         <div className="text-sm text-gray-600 space-y-1 mb-3">
-                          <p>
-                            {order.type === "material_request"
-                              ? `Project Manager: ${order.requesterName}`
-                              : `Customer: ${order.customerName}`}
-                          </p>
+                          <p>Customer: {order.customerId?.name || "N/A"}</p>
                           <p>📅 {formatDate(order.createdAt)}</p>
-                          {order.projectLocation && <p>📍 {order.projectLocation}</p>}
+                          {order.checkoutId?.deliveryAddress && (
+                            <p>
+                              📍 {order.checkoutId.deliveryAddress.street},{" "}
+                              {order.checkoutId.deliveryAddress.city}
+                            </p>
+                          )}
+                          <p>💰 Total: {formatPrice(order.totalAmount || 0)}</p>
                         </div>
 
-                        {(order.projectDescription || order.requestReason) && (
+                        {order.checkoutId?.items && (
                           <div className="text-sm text-gray-700 mb-3 p-3 bg-gray-100 rounded-md">
-                            <p>{order.projectDescription || order.requestReason}</p>
-                          </div>
-                        )}
-
-                        {order.urgencyLevel && (
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm font-medium text-gray-700">
-                              Tingkat Urgensi:
-                            </span>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                order.urgencyLevel === "low"
-                                  ? "bg-green-100 text-green-800"
-                                  : order.urgencyLevel === "normal"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : order.urgencyLevel === "high"
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {order.urgencyLevel === "low"
-                                ? "Rendah"
-                                : order.urgencyLevel === "normal"
-                                ? "Normal"
-                                : order.urgencyLevel === "high"
-                                ? "Tinggi"
-                                : "Kritis"}
-                            </span>
+                            <p className="font-medium mb-2">
+                              Items ({order.checkoutId.items.length}):
+                            </p>
+                            <ul className="space-y-1">
+                              {order.checkoutId.items
+                                .slice(0, 3)
+                                .map((item, idx) => (
+                                  <li key={idx}>
+                                    {item.productName} - {item.quantity}{" "}
+                                    {item.unit} @{" "}
+                                    {formatPrice(item.priceAtCheckout)}
+                                  </li>
+                                ))}
+                              {order.checkoutId.items.length > 3 && (
+                                <li className="text-blue-600">
+                                  +{order.checkoutId.items.length - 3} item
+                                  lainnya
+                                </li>
+                              )}
+                            </ul>
                           </div>
                         )}
 
                         <div className="border-t border-gray-200 pt-3">
-                          <h5 className="text-sm font-medium text-gray-900 mb-2">
-                            Material ({order.items.length} item)
-                          </h5>
-                          <div className="space-y-2">
-                            {order.items.slice(0, 3).map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex justify-between items-center text-sm"
-                              >
-                                <span className="text-gray-700">
-                                  {item.product.name}
-                                </span>
-                                <span className="text-gray-600">
-                                  {item.quantity} {item.product.unit}
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  {formatPrice(item.subtotal)}
-                                </span>
-                              </div>
-                            ))}
-                            {order.items.length > 3 && (
-                              <div className="text-sm text-blue-600 font-medium">
-                                +{order.items.length - 3} item lainnya
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-sm font-medium text-gray-700">
+                              Status Pengiriman:
+                            </span>
+                            {order.checkoutId &&
+                              getDeliveryStatusBadge(order.checkoutId.delivery)}
                           </div>
-                          <div className="mt-2 pt-2 border-t border-gray-200">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-gray-900">
-                                Total:
-                              </span>
-                              <span className="text-lg font-bold text-gray-900">
-                                {formatPrice(order.total)}
-                              </span>
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-700">
+                              Status Pembayaran:
+                            </span>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                order.checkoutId?.paymentStatus === "paid"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {order.checkoutId?.paymentStatus === "paid"
+                                ? "Sudah Bayar"
+                                : "Pending"}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -624,57 +751,26 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                           Lihat Detail
                         </button>
 
-                        {order.status === "pending" && (
-                          <>
+                        {order.checkoutId &&
+                          order.checkoutId.delivery !== "sudah sampai" && (
                             <button
                               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 text-sm font-medium"
-                              onClick={() => updateOrderStatus(order.id, "approved")}
+                              onClick={() =>
+                                updateDeliveryStatus(order.checkoutId._id)
+                              }
                             >
-                              Setujui
+                              {order.checkoutId.delivery === "belum dikirim"
+                                ? "📦 Mulai Kirim"
+                                : "✅ Tandai Sampai"}
                             </button>
-                            <button
-                              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors duration-200 text-sm font-medium"
-                              onClick={() => updateOrderStatus(order.id, "cancelled")}
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        )}
+                          )}
 
-                        {order.status === "pending_approval" && (
-                          <>
-                            <button
-                              className="btn-approve"
-                              onClick={() => updateOrderStatus(order.id, "approved")}
-                            >
-                              Setujui
-                            </button>
-                            <button
-                              className="btn-reject"
-                              onClick={() => updateOrderStatus(order.id, "cancelled")}
-                            >
-                              Tolak
-                            </button>
-                          </>
-                        )}
-
-                        {order.status === "approved" && (
-                          <button
-                            className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors duration-200 text-sm font-medium"
-                            onClick={() => updateOrderStatus(order.id, "in_progress")}
-                          >
-                            Mulai Proses
-                          </button>
-                        )}
-
-                        {order.status === "in_progress" && (
-                          <button
-                            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-200 text-sm font-medium"
-                            onClick={() => updateOrderStatus(order.id, "completed")}
-                          >
-                            Selesaikan
-                          </button>
-                        )}
+                        {order.checkoutId &&
+                          order.checkoutId.delivery === "sudah sampai" && (
+                            <div className="px-4 py-2 bg-green-100 text-green-800 rounded-md text-sm font-medium text-center">
+                              ✅ Pengiriman Selesai
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -904,8 +1000,17 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                   {tab.value === "all"
                     ? ` (${listRabs.length})`
                     : tab.value === "reviewed"
-                    ? ` (${listRabs.filter((r) => r.status === "pending" || r.status === "reviewed" || r.status === "quoted").length})`
-                    : ` (${listRabs.filter((r) => r.status === tab.value).length})`}
+                    ? ` (${
+                        listRabs.filter(
+                          (r) =>
+                            r.status === "pending" ||
+                            r.status === "reviewed" ||
+                            r.status === "quoted"
+                        ).length
+                      })`
+                    : ` (${
+                        listRabs.filter((r) => r.status === tab.value).length
+                      })`}
                 </button>
               ))}
             </div>
@@ -924,7 +1029,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
               <option value="">Semua Project Manager</option>
               {projectManagers.map((pm) => {
                 const pmRabCount = listRabs.filter(
-                  (rab) => rab.projectManagerId?._id === pm._id || rab.projectManagerId === pm._id
+                  (rab) =>
+                    rab.projectManagerId?._id === pm._id ||
+                    rab.projectManagerId === pm._id
                 ).length;
                 return (
                   <option key={pm._id} value={pm._id}>
@@ -983,7 +1090,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <p className="text-gray-500 text-lg">Tidak ada permintaan RAB</p>
+                <p className="text-gray-500 text-lg">
+                  Tidak ada permintaan RAB
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1028,7 +1137,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                             {rab.description || "-"}
                           </div>
                         </td>
-                        <td className="px-6 py-4">{getRABStatusBadge(rab.status)}</td>
+                        <td className="px-6 py-4">
+                          {getRABStatusBadge(rab.status)}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
                             {rab.projectManagerId?.name || (
@@ -1205,7 +1316,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                         Deskripsi
                       </h4>
                       <div className="bg-gray-50 p-4 rounded-lg">
-                        <p className="text-gray-700">{selectedRAB.description}</p>
+                        <p className="text-gray-700">
+                          {selectedRAB.description}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1238,13 +1351,18 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                             {selectedRAB.items.map((item, index) => {
                               // Find matching product to get stock
                               const product = products.find(
-                                (p) => p.name === (item.materialName || item.name)
+                                (p) =>
+                                  p.name === (item.materialName || item.name)
                               );
                               const stock = product?.stock || 0;
-                              const hasEnoughStock = stock >= (item.quantity || 0);
+                              const hasEnoughStock =
+                                stock >= (item.quantity || 0);
 
                               return (
-                                <tr key={index} className="border-b border-gray-200">
+                                <tr
+                                  key={index}
+                                  className="border-b border-gray-200"
+                                >
                                   <td className="py-2 px-2 text-sm">
                                     {item.materialName || item.name || "-"}
                                   </td>
@@ -1279,7 +1397,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                         <div className="text-center py-4 text-gray-500">
                           <p>Tidak ada material yang tercatat</p>
                           {selectedRAB.customerNotes && (
-                            <p className="text-xs mt-2">Catatan: {selectedRAB.customerNotes}</p>
+                            <p className="text-xs mt-2">
+                              Catatan: {selectedRAB.customerNotes}
+                            </p>
                           )}
                         </div>
                       )}
@@ -1328,9 +1448,11 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                               Assign to Me
                             </button>
                           )}
-                          
+
                           {/* Tombol Tolak RAB untuk PM */}
-                          {["pending", "reviewed"].includes(selectedRAB.status) && (
+                          {["pending", "reviewed"].includes(
+                            selectedRAB.status
+                          ) && (
                             <button
                               onClick={() => handleRejectByPM(selectedRAB._id)}
                               className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -1338,7 +1460,7 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                               Tolak RAB
                             </button>
                           )}
-                          
+
                           {selectedRAB.projectManagerId?._id === user?._id &&
                             selectedRAB.status === "reviewed" && (
                               <button
@@ -1357,7 +1479,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                       {user?.role === "admin" && (
                         <>
                           {/* Tombol Tolak RAB untuk Admin */}
-                          {["pending", "reviewed"].includes(selectedRAB.status) && (
+                          {["pending", "reviewed"].includes(
+                            selectedRAB.status
+                          ) && (
                             <button
                               onClick={() => handleRejectByPM(selectedRAB._id)}
                               className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -1365,7 +1489,7 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                               Tolak RAB
                             </button>
                           )}
-                          
+
                           {selectedRAB.status === "pending" && (
                             <button
                               onClick={() =>
@@ -1380,7 +1504,10 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                             <>
                               <button
                                 onClick={() =>
-                                  handleUpdateStatus(selectedRAB._id, "accepted")
+                                  handleUpdateStatus(
+                                    selectedRAB._id,
+                                    "accepted"
+                                  )
                                 }
                                 className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
                               >
@@ -1388,7 +1515,10 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                               </button>
                               <button
                                 onClick={() =>
-                                  handleUpdateStatus(selectedRAB._id, "rejected")
+                                  handleUpdateStatus(
+                                    selectedRAB._id,
+                                    "rejected"
+                                  )
                                 }
                                 className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
                               >
@@ -1451,8 +1581,9 @@ const OrderManagement = ({ orders, onUpdateOrder }) => {
                 <div className="p-6 space-y-6">
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-800">
-                      <span className="font-semibold">Perhatian:</span> Isi harga
-                      satuan untuk setiap material. Total akan dihitung otomatis.
+                      <span className="font-semibold">Perhatian:</span> Isi
+                      harga satuan untuk setiap material. Total akan dihitung
+                      otomatis.
                     </p>
                   </div>
 

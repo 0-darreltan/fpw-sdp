@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { actionOrder } from "../../features/order/orderSlice";
+import { actionOrder } from "../../../features/order/orderSlice";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,7 +14,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { Bar, Pie, Line } from "react-chartjs-2";
 
 // Register ChartJS components
 ChartJS.register(
@@ -30,18 +30,19 @@ ChartJS.register(
   Filler
 );
 
-const CustomerLoyaltyReport = () => {
+const BestSellerReport = () => {
   const dispatch = useDispatch();
-  const { customerLoyalty: reportData, loading, error } = useSelector(
+  const { outgoingInventory: reportData, loading, error } = useSelector(
     (state) => state.order
   );
 
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
+    orderType: "",
   });
 
-  const [viewMode, setViewMode] = useState("spending"); // spending or frequency
+  const [viewMode, setViewMode] = useState("quantity"); // quantity or revenue
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("id-ID", {
@@ -51,16 +52,8 @@ const CustomerLoyaltyReport = () => {
     }).format(value);
   };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString("id-ID", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   useEffect(() => {
-    dispatch(actionOrder.fetchCustomerLoyalty({}));
+    dispatch(actionOrder.fetchOutgoingInventory({}));
   }, [dispatch]);
 
   const handleFilterChange = (e) => {
@@ -75,35 +68,36 @@ const CustomerLoyaltyReport = () => {
     const queryParams = {};
     if (filters.startDate) queryParams.startDate = filters.startDate;
     if (filters.endDate) queryParams.endDate = filters.endDate;
+    if (filters.orderType) queryParams.orderType = filters.orderType;
 
-    dispatch(actionOrder.fetchCustomerLoyalty(queryParams));
+    dispatch(actionOrder.fetchOutgoingInventory(queryParams));
   };
 
   const handleResetFilters = () => {
     setFilters({
       startDate: "",
       endDate: "",
+      orderType: "",
     });
-    dispatch(actionOrder.fetchCustomerLoyalty({}));
+    dispatch(actionOrder.fetchOutgoingInventory({}));
   };
 
-  // Get customer data
-  const customers = reportData?.customers || [];
-  const stats = reportData?.stats || {};
-  const top10Customers = customers.slice(0, 10);
-  const top5Customers = customers.slice(0, 5);
+  // Get top products
+  const topProducts = reportData?.products?.slice(0, 20) || [];
+  const top5Products = topProducts.slice(0, 5);
 
   // Bar chart - Top 10 by selected view mode
+  const top10ByView = topProducts.slice(0, 10);
   const barChartData = {
-    labels: top10Customers.map((c) => c.customerName),
+    labels: top10ByView.map((p) => p.productName),
     datasets: [
       {
-        label: viewMode === "spending" ? "Total Spent" : "Total Orders",
-        data: top10Customers.map((c) =>
-          viewMode === "spending" ? c.totalSpent : c.totalOrders
+        label: viewMode === "quantity" ? "Quantity Terjual" : "Revenue",
+        data: top10ByView.map((p) =>
+          viewMode === "quantity" ? p.totalQuantity : p.totalRevenue
         ),
-        backgroundColor: "rgba(34, 197, 94, 0.8)",
-        borderColor: "rgba(34, 197, 94, 1)",
+        backgroundColor: "rgba(59, 130, 246, 0.8)",
+        borderColor: "rgba(59, 130, 246, 1)",
         borderWidth: 2,
       },
     ],
@@ -112,15 +106,14 @@ const CustomerLoyaltyReport = () => {
   const barOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    indexAxis: "y",
     plugins: {
       legend: {
         position: "top",
       },
       title: {
         display: true,
-        text: `Top 10 Loyal Customers by ${
-          viewMode === "spending" ? "Spending" : "Order Frequency"
+        text: `Top 10 Produk Terlaris by ${
+          viewMode === "quantity" ? "Quantity" : "Revenue"
         }`,
         font: {
           size: 16,
@@ -130,38 +123,38 @@ const CustomerLoyaltyReport = () => {
       tooltip: {
         callbacks: {
           label: function (context) {
-            if (viewMode === "spending") {
-              return formatCurrency(context.parsed.x);
+            if (viewMode === "revenue") {
+              return formatCurrency(context.parsed.y);
             }
-            return `${context.parsed.x} orders`;
+            return `${context.parsed.y} unit`;
           },
         },
       },
     },
     scales: {
-      x: {
+      y: {
         beginAtZero: true,
       },
     },
   };
 
-  // Doughnut chart - Top 5 revenue share
-  const doughnutChartData = {
-    labels: top5Customers.map((c) => c.customerName),
+  // Pie chart - Top 5 market share by revenue
+  const pieChartData = {
+    labels: top5Products.map((p) => p.productName),
     datasets: [
       {
         label: "Revenue Share",
-        data: top5Customers.map((c) => c.totalSpent),
+        data: top5Products.map((p) => p.totalRevenue),
         backgroundColor: [
-          "rgba(34, 197, 94, 0.8)",
           "rgba(59, 130, 246, 0.8)",
+          "rgba(16, 185, 129, 0.8)",
           "rgba(245, 158, 11, 0.8)",
           "rgba(239, 68, 68, 0.8)",
           "rgba(139, 92, 246, 0.8)",
         ],
         borderColor: [
-          "rgba(34, 197, 94, 1)",
           "rgba(59, 130, 246, 1)",
+          "rgba(16, 185, 129, 1)",
           "rgba(245, 158, 11, 1)",
           "rgba(239, 68, 68, 1)",
           "rgba(139, 92, 246, 1)",
@@ -171,7 +164,7 @@ const CustomerLoyaltyReport = () => {
     ],
   };
 
-  const doughnutOptions = {
+  const pieOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -180,7 +173,7 @@ const CustomerLoyaltyReport = () => {
       },
       title: {
         display: true,
-        text: "Top 5 Revenue Contribution",
+        text: "Top 5 Revenue Share",
         font: {
           size: 16,
           weight: "bold",
@@ -198,13 +191,13 @@ const CustomerLoyaltyReport = () => {
     },
   };
 
-  // Line chart - Orders vs Spending for top 5
+  // Line chart - Quantity vs Revenue trend for top 5
   const lineChartData = {
-    labels: top5Customers.map((c) => c.customerName),
+    labels: top5Products.map((p) => p.productName),
     datasets: [
       {
-        label: "Total Orders",
-        data: top5Customers.map((c) => c.totalOrders),
+        label: "Quantity Terjual",
+        data: top5Products.map((p) => p.totalQuantity),
         borderColor: "rgba(59, 130, 246, 1)",
         backgroundColor: "rgba(59, 130, 246, 0.2)",
         yAxisID: "y",
@@ -212,10 +205,10 @@ const CustomerLoyaltyReport = () => {
         fill: true,
       },
       {
-        label: "Spending (dalam jutaan)",
-        data: top5Customers.map((c) => c.totalSpent / 1000000),
-        borderColor: "rgba(34, 197, 94, 1)",
-        backgroundColor: "rgba(34, 197, 94, 0.2)",
+        label: "Revenue (dalam jutaan)",
+        data: top5Products.map((p) => p.totalRevenue / 1000000),
+        borderColor: "rgba(16, 185, 129, 1)",
+        backgroundColor: "rgba(16, 185, 129, 0.2)",
         yAxisID: "y1",
         tension: 0.4,
         fill: true,
@@ -236,7 +229,7 @@ const CustomerLoyaltyReport = () => {
       },
       title: {
         display: true,
-        text: "Top 5 - Orders vs Spending",
+        text: "Top 5 - Quantity vs Revenue",
         font: {
           size: 16,
           weight: "bold",
@@ -250,7 +243,7 @@ const CustomerLoyaltyReport = () => {
         position: "left",
         title: {
           display: true,
-          text: "Total Orders",
+          text: "Quantity",
         },
       },
       y1: {
@@ -259,7 +252,7 @@ const CustomerLoyaltyReport = () => {
         position: "right",
         title: {
           display: true,
-          text: "Spending (Juta Rp)",
+          text: "Revenue (Juta Rp)",
         },
         grid: {
           drawOnChartArea: false,
@@ -272,8 +265,8 @@ const CustomerLoyaltyReport = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat laporan loyalitas customer...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat laporan best seller...</p>
         </div>
       </div>
     );
@@ -295,17 +288,17 @@ const CustomerLoyaltyReport = () => {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800">
-            Laporan Customer Paling Loyal
+            Laporan Barang Paling Laris
           </h1>
           <p className="text-gray-600 mt-2">
-            Analisis pelanggan berdasarkan pembelian dan frekuensi transaksi
+            Analisis produk terlaris berdasarkan penjualan dan revenue
           </p>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Filter</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tanggal Mulai
@@ -315,7 +308,7 @@ const CustomerLoyaltyReport = () => {
                 name="startDate"
                 value={filters.startDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
@@ -327,13 +320,28 @@ const CustomerLoyaltyReport = () => {
                 name="endDate"
                 value={filters.endDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tipe Order
+              </label>
+              <select
+                name="orderType"
+                value={filters.orderType}
+                onChange={handleFilterChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Semua</option>
+                <option value="MATERIAL_PURCHASE">Material Purchase</option>
+                <option value="PROJECT">Project</option>
+              </select>
             </div>
             <div className="flex items-end gap-2">
               <button
                 onClick={handleApplyFilters}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
                 Terapkan
               </button>
@@ -347,58 +355,11 @@ const CustomerLoyaltyReport = () => {
           </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90">Total Customers</p>
-                <p className="text-3xl font-bold mt-2">{stats.totalCustomers || 0}</p>
-              </div>
-              <div className="text-5xl opacity-80">👥</div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90">Total Orders</p>
-                <p className="text-3xl font-bold mt-2">{stats.totalOrders || 0}</p>
-              </div>
-              <div className="text-5xl opacity-80">📋</div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90">Total Revenue</p>
-                <p className="text-2xl font-bold mt-2">
-                  {formatCurrency(stats.totalRevenue || 0)}
-                </p>
-              </div>
-              <div className="text-5xl opacity-80">💰</div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm opacity-90">Avg per Customer</p>
-                <p className="text-xl font-bold mt-2">
-                  {formatCurrency(stats.averageSpentPerCustomer || 0)}
-                </p>
-              </div>
-              <div className="text-5xl opacity-80">📊</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Top 3 Customers - Podium Style */}
-        {customers.length >= 3 && (
+        {/* Top 3 Products - Podium Style */}
+        {topProducts.length >= 3 && (
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              🏆 Top 3 Most Loyal Customers
+              🏆 Top 3 Best Sellers
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* 2nd Place */}
@@ -406,21 +367,20 @@ const CustomerLoyaltyReport = () => {
                 <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg p-6 text-center transform hover:scale-105 transition-transform">
                   <div className="text-6xl mb-3">🥈</div>
                   <div className="text-sm text-gray-600 mb-1">2nd Place</div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-2 min-h-[3rem] flex items-center justify-center">
-                    {customers[1].customerName}
+                  <h3 className="text-lg font-bold text-gray-800 mb-3 min-h-[3rem]">
+                    {topProducts[1].productName}
                   </h3>
-                  <p className="text-xs text-gray-600 mb-3">{customers[1].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Total Spent</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        {formatCurrency(customers[1].totalSpent)}
+                      <p className="text-xs text-gray-600">Terjual</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {topProducts[1].totalQuantity} {topProducts[1].unit}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Orders</p>
-                      <p className="text-xl font-bold text-gray-800">
-                        {customers[1].totalOrders}
+                      <p className="text-xs text-gray-600">Revenue</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        {formatCurrency(topProducts[1].totalRevenue)}
                       </p>
                     </div>
                   </div>
@@ -432,29 +392,28 @@ const CustomerLoyaltyReport = () => {
                 <div className="bg-gradient-to-br from-yellow-200 to-yellow-400 rounded-lg p-6 text-center transform md:scale-110 hover:scale-115 transition-transform shadow-xl">
                   <div className="text-7xl mb-3">🥇</div>
                   <div className="text-sm text-gray-800 mb-1 font-semibold">
-                    1st Place - VIP Customer!
+                    1st Place - Champion!
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 min-h-[3rem] flex items-center justify-center">
-                    {customers[0].customerName}
+                  <h3 className="text-xl font-bold text-gray-900 mb-3 min-h-[3rem]">
+                    {topProducts[0].productName}
                   </h3>
-                  <p className="text-xs text-gray-800 mb-3">{customers[0].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-3">
-                      <p className="text-xs text-gray-600">Total Spent</p>
-                      <p className="text-xl font-bold text-yellow-700">
-                        {formatCurrency(customers[0].totalSpent)}
+                      <p className="text-xs text-gray-600">Terjual</p>
+                      <p className="text-2xl font-bold text-yellow-700">
+                        {topProducts[0].totalQuantity} {topProducts[0].unit}
                       </p>
                     </div>
                     <div className="bg-white rounded p-3">
-                      <p className="text-xs text-gray-600">Orders</p>
-                      <p className="text-2xl font-bold text-yellow-700">
-                        {customers[0].totalOrders}
+                      <p className="text-xs text-gray-600">Revenue</p>
+                      <p className="text-xl font-bold text-yellow-700">
+                        {formatCurrency(topProducts[0].totalRevenue)}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Avg/Order</p>
+                      <p className="text-xs text-gray-600">Orders</p>
                       <p className="text-lg font-semibold text-gray-700">
-                        {formatCurrency(customers[0].averageOrderValue)}
+                        {topProducts[0].orderCount} order
                       </p>
                     </div>
                   </div>
@@ -466,21 +425,20 @@ const CustomerLoyaltyReport = () => {
                 <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg p-6 text-center transform hover:scale-105 transition-transform">
                   <div className="text-6xl mb-3">🥉</div>
                   <div className="text-sm text-gray-600 mb-1">3rd Place</div>
-                  <h3 className="text-lg font-bold text-gray-800 mb-2 min-h-[3rem] flex items-center justify-center">
-                    {customers[2].customerName}
+                  <h3 className="text-lg font-bold text-gray-800 mb-3 min-h-[3rem]">
+                    {topProducts[2].productName}
                   </h3>
-                  <p className="text-xs text-gray-600 mb-3">{customers[2].customerEmail}</p>
                   <div className="space-y-2">
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Total Spent</p>
-                      <p className="text-lg font-bold text-gray-800">
-                        {formatCurrency(customers[2].totalSpent)}
+                      <p className="text-xs text-gray-600">Terjual</p>
+                      <p className="text-xl font-bold text-gray-800">
+                        {topProducts[2].totalQuantity} {topProducts[2].unit}
                       </p>
                     </div>
                     <div className="bg-white rounded p-2">
-                      <p className="text-xs text-gray-600">Orders</p>
-                      <p className="text-xl font-bold text-gray-800">
-                        {customers[2].totalOrders}
+                      <p className="text-xs text-gray-600">Revenue</p>
+                      <p className="text-lg font-bold text-gray-800">
+                        {formatCurrency(topProducts[2].totalRevenue)}
                       </p>
                     </div>
                   </div>
@@ -498,24 +456,24 @@ const CustomerLoyaltyReport = () => {
             </h3>
             <div className="flex gap-2">
               <button
-                onClick={() => setViewMode("spending")}
+                onClick={() => setViewMode("quantity")}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  viewMode === "spending"
-                    ? "bg-green-600 text-white"
+                  viewMode === "quantity"
+                    ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
-                By Spending
+                By Quantity
               </button>
               <button
-                onClick={() => setViewMode("frequency")}
+                onClick={() => setViewMode("revenue")}
                 className={`px-4 py-2 rounded-md transition-colors ${
-                  viewMode === "frequency"
-                    ? "bg-green-600 text-white"
+                  viewMode === "revenue"
+                    ? "bg-blue-600 text-white"
                     : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
               >
-                By Frequency
+                By Revenue
               </button>
             </div>
           </div>
@@ -530,10 +488,10 @@ const CustomerLoyaltyReport = () => {
             </div>
           </div>
 
-          {/* Doughnut Chart */}
+          {/* Pie Chart */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div style={{ height: "400px" }}>
-              <Doughnut data={doughnutChartData} options={doughnutOptions} />
+              <Pie data={pieChartData} options={pieOptions} />
             </div>
           </div>
         </div>
@@ -548,7 +506,7 @@ const CustomerLoyaltyReport = () => {
         {/* Detailed Table */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">
-            Detail Customer Loyalty
+            Ranking Detail Produk
           </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -558,30 +516,28 @@ const CustomerLoyaltyReport = () => {
                     Rank
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
+                    Produk
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
+                    Qty Terjual
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Orders
+                    Orders
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Spent
+                    Revenue
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Avg/Order
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer Since
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {customers.map((customer, index) => {
+                {topProducts.map((product, index) => {
+                  const avgPerOrder = product.totalRevenue / product.orderCount;
                   return (
                     <tr
-                      key={customer.customerId}
+                      key={product.productId}
                       className={`hover:bg-gray-50 ${
                         index < 3 ? "bg-yellow-50" : ""
                       }`}
@@ -603,41 +559,27 @@ const CustomerLoyaltyReport = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {customer.customerName}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {customer.customerEmail}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {customer.customerPhone || "-"}
+                          {product.productName}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-bold text-blue-600">
-                          {customer.totalOrders}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {customer.totalItems} items
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-green-600">
-                          {formatCurrency(customer.totalSpent)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600">
-                          {formatCurrency(customer.averageOrderValue)}
+                          {product.totalQuantity} {product.unit}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {formatDate(customer.firstOrderDate)}
+                          {product.orderCount}
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {customer.customerLifetimeDays} days
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-green-600">
+                          {formatCurrency(product.totalRevenue)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-600">
+                          {formatCurrency(avgPerOrder)}
                         </div>
                       </td>
                     </tr>
@@ -652,4 +594,4 @@ const CustomerLoyaltyReport = () => {
   );
 };
 
-export default CustomerLoyaltyReport;
+export default BestSellerReport;

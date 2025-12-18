@@ -27,7 +27,7 @@ const Cart = ({ onClose }) => {
       await dispatch(
         actionCart.upsertItemInCart({
           productId: item.productId,
-          quantity: (item.quantity || 0) + 1,
+          quantity: 1,
         })
       ).unwrap();
       await dispatch(actionCart.fetchCart());
@@ -38,7 +38,10 @@ const Cart = ({ onClose }) => {
   };
 
   const handleDec = async (item) => {
+    console.log({ item });
+    console.log(item.quantity);
     const nextQty = (item.quantity || 0) - 1;
+    console.log({ nextQty });
     try {
       if (nextQty <= 0) {
         await dispatch(actionCart.deleteCartItem(item.productId)).unwrap();
@@ -46,7 +49,7 @@ const Cart = ({ onClose }) => {
         await dispatch(
           actionCart.upsertItemInCart({
             productId: item.productId,
-            quantity: nextQty,
+            quantity: -1,
           })
         ).unwrap();
       }
